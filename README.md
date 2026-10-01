@@ -10,7 +10,7 @@ Turn any major AI chat (**DeepSeek, ChatGPT, Google Gemini, Kimi, GLM, Qwen, Are
 
 Describe what you want in plain English and the AI builds instances, writes Luau/code files, sculpts terrain, tunes lighting, generates UI, runs builds and tests, and audits your project — inside Studio or directly on disk.
 
-No API keys, no monthly fees. Chromium browsers (Chrome, Brave, Edge, Thorium). Theme is black/white outlines.
+No API keys, no monthly fees. Chromium browsers (Chrome, Brave, Edge, Thorium). The extension and desktop app use the same dark navy + warm gold PlazCode theme.
 
 ---
 
@@ -28,7 +28,7 @@ Large `execute_luau` scripts are auto-chunked around 24 KB so Studio's parser ne
 ## Setup
 
 1. Open `chrome://extensions` → Developer mode → **Load unpacked** → this folder (`manifest.json`).
-2. Double-click **`plazcode-agent.exe`** (or `plazcode-agent --headless`). It starts:
+2. Double-click **`PlazCode.exe`**. `plazcode-agent.exe` is also shipped as a compatibility alias, and `PlazCode.exe --headless` runs without the desktop window. It starts:
    - HTTP API on `http://127.0.0.1:3000`
    - WS bridges on `17613` (RS/AN) and `17615` (AS)
    - Workspace folder for AgentScript (`PLAZCODE_WORKSPACE_ROOT` / `--workspace` / `%USERPROFILE%\PlazCodeWorkspace`)
@@ -39,7 +39,7 @@ Large `execute_luau` scripts are auto-chunked around 24 KB so Studio's parser ne
 
 ## Agent
 
-- Native crate: `agent/` (`plazcode-agent` 1.18.55). Status window, MCP helper spawn, outbound WS channel so ping/status keep flowing during a 20 s `execute_luau`.
+- Native crate: `agent/` (`plazcode-agent` 1.18.56). Desktop control center, MCP helper spawn, outbound WS channel so ping/status keep flowing during a 20 s `execute_luau`.
 - Service worker skips stale-socket reconnect and MCP heal while a `call_tool` is in flight (the 25 s stale window used to kill long tools).
 - 30 Studio skills, a 24-command animation suite, AgentScript file/terminal tools.
 - Personas (Builder / Scripter / Animator / Fixer), Extra Thinking, Forge GUI, Image → Model, auto-fix playtest errors.
@@ -59,7 +59,7 @@ node --check core/main.js && node --check core/config.js && node --check backgro
 cd agent && cargo test
 ```
 
-`test-bridges.js` is a live smoke test: start `plazcode-agent` first. It checks HTTP `:3000` and WS `17613` / `17615` (no Unreal port).
+`test-bridges.js` is a live smoke test: start `PlazCode.exe` first. It checks HTTP `:3000` and WS `17613` / `17615` (no Unreal port).
 
 ## Privacy
 
