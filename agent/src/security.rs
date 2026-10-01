@@ -20,7 +20,7 @@ pub fn allowed_origin(headers: &HeaderMap) -> bool {
         None => true,
         Some(value) => {
             let Ok(origin) = value.to_str() else { return false; };
-            if matches!(origin, "http://127.0.0.1:3000" | "http://localhost:3000" | "null") {
+            if matches!(origin, "http://127.0.0.1:3000" | "http://localhost:3000" | "http://plazcode.localhost") {
                 return true;
             }
             origin.strip_prefix("chrome-extension://")
@@ -93,6 +93,8 @@ mod tests {
         assert!(authorized(&h, &key));
         h.insert("origin", "null".parse().unwrap());
         assert!(!authorized(&h, &key));
+        h.insert("origin", "http://plazcode.localhost".parse().unwrap());
+        assert!(authorized(&h, &key));
     }
 }
 
