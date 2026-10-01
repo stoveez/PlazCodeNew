@@ -462,6 +462,7 @@ async fn start() -> anyhow::Result<()> {
         workspace.set_full_access(true);
     }
     shared.attach_workspace(workspace.root_display(), workspace.full_flag());
+    shared.set_local_tools(&workspace::catalog(), workspace.ready());
     shared.log(&format!("plazcode-agent v{} — native bridge for roblox studio / local fs", env!("CARGO_PKG_VERSION")));
     shared.log(&format!("workspace: {}", workspace.root_display()));
     if workspace.full_access() { shared.log("FULL PC ACCESS enabled at boot (PLAZCODE_FULL_ACCESS=1)"); }
@@ -569,6 +570,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/show", post(show_handler))
         .route("/api/local-full", post(local_full_handler))
         .route("/api/preferences", get(preferences_get_handler).post(preferences_post_handler))
+        .route("/api/tools/browser", post(browser_tools_handler))
         .route("/api/mcp/catalog", get(mcp_catalog_handler))
         .route("/api/mcp/toggle", post(mcp_toggle_handler))
         .route("/ws", get(ws_handler))
@@ -664,6 +666,18 @@ async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json
     }
 }
 
+#[derive(serde::Deserialize)]
+struct BrowserToolsReq {
+    #[serde(default)]
+    tools: Vec<serde_json::Value>,
+}
+
+async fn browser_tools_handler(State(state): State<AppState>, Json(req): Json<BrowserToolsReq>) -> impl IntoResponse {
+    state.ui.mark_extension_seen();
+    state.ui.set_browser_tools(&req.tools);
+    Json(serde_json::json!({"ok": true, "tools": req.tools.len()}))
+}
+
 async fn mcp_catalog_handler() -> impl IntoResponse {
     let cfg = mcp_addons::read_config();
     let entries: Vec<serde_json::Value> = mcp_addons::catalog().into_iter().map(|entry| {
@@ -752,9 +766,10 @@ async fn roblox_tools(state: &AppState) -> anyhow::Result<Vec<serde_json::Value>
         }
     };
 
+    state.ui.set_roblox_tools(&primary, true);
     let (addon_tools, addon_servers) = state.addons.lock().await.list_tools().await;
+    state.ui.set_addon_tools(&addon_tools, addon_servers);
     primary.extend(addon_tools);
-    state.ui.set_tool_snapshot(&primary, addon_servers);
     Ok(primary)
 }
 
@@ -882,6 +897,7 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                         let response = if engine == "local" {
                             let ready = state.workspace.ready();
                             let tools = workspace::catalog();
+                            state.ui.set_local_tools(&tools, ready);
                             serde_json::json!({"type":"tools","id":id,"ok":ready,"mcp_alive":ready,"studio":ready,"tools":tools,"servers":[{"id":"local","name":"Local Filesystem","alive":ready,"tools":if ready { tools.len() } else { 0 }}]})
                         } else {
                             match roblox_tools(&state).await {
