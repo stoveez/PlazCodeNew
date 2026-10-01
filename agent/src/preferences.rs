@@ -68,13 +68,20 @@ pub struct PreferencesStore {
 
 impl PreferencesStore {
     pub fn load() -> Self {
-        let path = settings_path();
+        Self::load_from(settings_path())
+    }
+
+    fn load_from(path: PathBuf) -> Self {
         let mut prefs = std::fs::read_to_string(&path)
             .ok()
             .and_then(|raw| serde_json::from_str::<DesktopPreferences>(&raw).ok())
             .unwrap_or_default();
         prefs.normalize();
         Self { path, inner: RwLock::new(prefs) }
+    }
+
+    pub fn persisted(&self) -> bool {
+        self.path.exists()
     }
 
     pub fn snapshot(&self) -> DesktopPreferences {
@@ -137,4 +144,73 @@ fn settings_path() -> PathBuf {
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("plazcode-settings.json")))
         .unwrap_or_else(|| PathBuf::from("plazcode-settings.json"))
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_settings_path() -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!("plazcode-settings-{}-{nonce}.json", std::process::id()))
+    }
+
+    #[test]
+    fn preferences_persist_across_reopen() {
+        let path = temp_settings_path();
+        let store = PreferencesStore::load_from(path.clone());
+        assert!(!store.persisted());
+
+        let mut prefs = store.snapshot();
+        prefs.engine = "local".to_string();
+        prefs.work_mode = "thorough".to_string();
+        prefs.perm_mode = "ask".to_string();
+        prefs.sounds = false;
+        prefs.extra_thinking = true;
+        prefs.plan_mode = true;
+        prefs.thinking_level = "max".to_string();
+        prefs.forge_mode = false;
+        prefs.auto_fix = false;
+        prefs.bg_mode = false;
+        store.replace(prefs).expect("save preferences");
+        assert!(store.persisted());
+
+        let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(reopened.engine, "local");
+        assert_eq!(reopened.work_mode, "thorough");
+        assert_eq!(reopened.perm_mode, "ask");
+        assert!(!reopened.sounds);
+        assert!(reopened.extra_thinking);
+        assert!(reopened.plan_mode);
+        assert_eq!(reopened.thinking_level, "max");
+        assert!(!reopened.forge_mode);
+        assert!(!reopened.auto_fix);
+        assert!(!reopened.bg_mode);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn invalid_saved_choices_are_normalized() {
+        let path = temp_settings_path();
+        std::fs::write(&path, r#"{
+            "rs-engine":"bad",
+            "rsWorkMode":"bad",
+            "rsPermMode":"bad",
+            "rsThinkingLevel":"bad"
+        }"#).expect("write invalid preferences");
+
+        let reopened = PreferencesStore::load_from(path.clone()).snapshot();
+        assert_eq!(reopened.engine, "roblox");
+        assert_eq!(reopened.work_mode, "balanced");
+        assert_eq!(reopened.perm_mode, "sandbox");
+        assert_eq!(reopened.thinking_level, "default");
+
+        let _ = std::fs::remove_file(path);
+    }
 }
