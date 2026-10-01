@@ -70,7 +70,7 @@ for (const path of requiredProviders) {
 }
 
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
-if (manifest.version !== "1.18.56") throw new Error("Expected extension version 1.18.56");
+if (manifest.version !== "1.18.60") throw new Error("Expected extension version 1.18.60");
 for (const entry of manifest.content_scripts || []) {
   for (const path of entry.js || []) {
     if (!fs.existsSync(path)) throw new Error("Manifest references missing JS: " + path);
