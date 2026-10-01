@@ -1232,24 +1232,91 @@ fn window_icon() -> Arc<egui::IconData> {
     let width = 64usize;
     let height = 64usize;
     let mut rgba = vec![0u8; width * height * 4];
+
+    let set = |rgba: &mut [u8], x: usize, y: usize, color: [u8; 4]| {
+        if x >= width || y >= height {
+            return;
+        }
+        let i = (y * width + x) * 4;
+        rgba[i..i + 4].copy_from_slice(&color);
+    };
+
+    let inside_round = |x: i32, y: i32| -> bool {
+        let left = 3;
+        let top = 3;
+        let right = 60;
+        let bottom = 60;
+        let radius = 11;
+
+        if x >= left + radius && x <= right - radius && y >= top && y <= bottom {
+            return true;
+        }
+        if y >= top + radius && y <= bottom - radius && x >= left && x <= right {
+            return true;
+        }
+
+        let corners = [
+            (left + radius, top + radius),
+            (right - radius, top + radius),
+            (left + radius, bottom - radius),
+            (right - radius, bottom - radius),
+        ];
+        corners.iter().any(|(cx, cy)| {
+            let dx = x - cx;
+            let dy = y - cy;
+            dx * dx + dy * dy <= radius * radius
+        })
+    };
+
     for y in 0..height {
         for x in 0..width {
-            let i = (y * width + x) * 4;
-            let dx = x as i32 - 32;
-            let dy = y as i32 - 32;
-            if dx * dx + dy * dy < 28 * 28 {
-                rgba[i..i + 4].copy_from_slice(&[6, 20, 38, 255]);
+            if inside_round(x as i32, y as i32) {
+                set(&mut rgba, x, y, [6, 20, 38, 255]);
             }
         }
     }
-    for y in 16..48 {
-        for x in 18..46 {
-            if x < 23 || x > 40 || y < 21 || y > 42 {
-                let i = (y * width + x) * 4;
-                rgba[i..i + 4].copy_from_slice(&[217, 173, 82, 255]);
+
+    let orange = [255, 164, 48, 255];
+    let glow = [255, 192, 87, 255];
+
+    for y in 14..40 {
+        for x in 17..23 {
+            set(&mut rgba, x, y, orange);
+        }
+    }
+    for y in 14..20 {
+        for x in 22..42 {
+            set(&mut rgba, x, y, glow);
+        }
+    }
+    for y in 29..35 {
+        for x in 22..39 {
+            set(&mut rgba, x, y, orange);
+        }
+    }
+
+    for y in 16..34 {
+        let dy = y as i32 - 25;
+        for x in 34..48 {
+            let dx = x as i32 - 36;
+            let outer = dx * dx + dy * dy <= 12 * 12;
+            let inner = dx * dx + dy * dy <= 6 * 6;
+            if outer && !inner {
+                set(&mut rgba, x, y, orange);
             }
         }
     }
+
+    for y in 43..55 {
+        let offset = (y - 43) / 2;
+        for x in (18usize.saturating_sub(offset))..(24usize.saturating_sub(offset)) {
+            set(&mut rgba, x, y, orange);
+        }
+        for x in (30usize.saturating_sub(offset))..(36usize.saturating_sub(offset)) {
+            set(&mut rgba, x, y, orange);
+        }
+    }
+
     Arc::new(egui::IconData { rgba, width: width as u32, height: height as u32 })
 }
 
