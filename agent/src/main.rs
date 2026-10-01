@@ -643,7 +643,11 @@ async fn show_handler(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.mark_extension_seen();
-    Json(serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({})))
+    let mut value = serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({}));
+    if let Some(object) = value.as_object_mut() {
+        object.insert("_plazcodePersisted".to_string(), serde_json::Value::Bool(state.preferences.persisted()));
+    }
+    Json(value)
 }
 
 async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
