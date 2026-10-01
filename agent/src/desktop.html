@@ -193,7 +193,20 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
       Fatal.style.display = "block";
       Fatal.textContent = "Desktop UI error: " + Message;
     }
+  }
+
+  function Reportjserror(Error) {
+    var Message = Error && Error.message ? Error.message : String(Error);
+    Showerror(Error);
     Ipc("js-error:" + Message);
+  }
+
+  function Showbridgestarting() {
+    var Fatal = Byid("fatal");
+    if (Fatal) {
+      Fatal.style.display = "block";
+      Fatal.textContent = "Starting PlazCode bridge...";
+    }
   }
 
   function Api(Path, Options) {
@@ -410,7 +423,9 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
       State = Nextstate;
       Render();
       return Loadcatalog();
-    }).catch(Showerror).then(function () {
+    }).catch(function () {
+      Showbridgestarting();
+    }).then(function () {
       Refreshing = false;
     });
   }
@@ -492,11 +507,11 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
   }
 
   window.addEventListener("error", function (Event) {
-    Showerror(Event.error || Event.message || "Unknown JavaScript error");
+    Reportjserror(Event.error || Event.message || "Unknown JavaScript error");
   });
 
   window.addEventListener("unhandledrejection", function (Event) {
-    Showerror(Event.reason || "Unhandled promise rejection");
+    Reportjserror(Event.reason || "Unhandled promise rejection");
   });
 
   if (document.readyState === "loading") {
