@@ -1,8 +1,5 @@
 name: Desktop Revamp Regression
 
-permissions:
-  contents: write
-
 on:
   push:
     branches:
@@ -59,23 +56,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Refresh WebView lockfile
-        shell: pwsh
-        run: cargo generate-lockfile --manifest-path agent/Cargo.toml
-      - name: Commit WebView lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/desktop-revamp'
-        shell: pwsh
-        run: |
-          git add agent/Cargo.lock
-          git diff --cached --quiet
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Cargo.lock already current"
-            exit 0
-          }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "build: lock WebView desktop dependencies"
-          git push origin HEAD:desktop-revamp
       - name: Cargo check
         shell: pwsh
         run: cargo check --locked --manifest-path agent/Cargo.toml
