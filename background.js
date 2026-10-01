@@ -27,7 +27,7 @@ async function ensurePairing(force = false) {
         headers: { "Content-Type": "application/json", "X-PlazCode-Extension": chrome.runtime.id },
         body: "{}", signal: controller.signal,
       });
-      if (!response.ok) throw new Error("Automatic pairing failed; use the matching 1.18.53 agent and extension.");
+      if (!response.ok) throw new Error("Automatic pairing failed; use the matching 1.18.54 agent and extension.");
       const data = await response.json();
       if (!/^[a-f0-9]{64}$/i.test(data.key || "")) throw new Error("Agent returned an invalid pairing response");
       pairingKey = data.key;
@@ -58,6 +58,68 @@ const PORT_LOCAL = 17615; // AgentScript — native FS/terminal engine
 const BLENDER_ADDON_PORT = 9876;
 const RUST_ROBLOX_HTTP = "http://127.0.0.1:3000";
 const ENGINE_KEY = "rs-engine";
+const DESKTOP_PREF_KEYS = [
+  ENGINE_KEY,
+  "rsWorkMode",
+  "rsPermMode",
+  "rsSounds",
+  "rsExtraThinking",
+  "rsPlanMode",
+  "rsThinkingLevel",
+  "rsForgeMode",
+  "rsAutoFix",
+  "rsBgMode",
+];
+let desktopSyncApplying = false;
+let desktopSyncPushTimer = null;
+
+async function pullDesktopPreferences() {
+  try {
+    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET" });
+    if (!response.ok) return false;
+    const remote = await response.json();
+    if (!remote || typeof remote !== "object") return false;
+    const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
+    const updates = {};
+    for (const key of DESKTOP_PREF_KEYS) {
+      if (!(key in remote)) continue;
+      if (JSON.stringify(local[key]) !== JSON.stringify(remote[key])) updates[key] = remote[key];
+    }
+    if (Object.keys(updates).length) {
+      desktopSyncApplying = true;
+      try { await chrome.storage.local.set(updates); }
+      finally { desktopSyncApplying = false; }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function pushDesktopPreferences() {
+  try {
+    const prefs = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
+    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prefs),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleDesktopPreferencesPush() {
+  clearTimeout(desktopSyncPushTimer);
+  desktopSyncPushTimer = setTimeout(() => { pushDesktopPreferences(); }, 250);
+}
+
+chrome.storage?.onChanged.addListener((changes, area) => {
+  if (area !== "local" || desktopSyncApplying) return;
+  if (DESKTOP_PREF_KEYS.some((key) => changes[key])) scheduleDesktopPreferencesPush();
+});
+
 // "anim" (Animation mode) is a persona-driven view of the SAME Roblox bridge:
 // it maps to 17613 everywhere a port/HTTP target is picked, but keeps its own
 // id so prompts, accents and UI state stay engine-isolated.
@@ -84,6 +146,7 @@ chrome.storage?.local.get(ENGINE_KEY, (o) => {
     if (r.ok) {
       rustMode = true;
       log("Rust agent detected on 3000 — HTTP pipe enabled (CORS bypass via background)");
+      await pullDesktopPreferences();
     }
   } catch {}
 })();
@@ -636,6 +699,7 @@ async function refreshProcStatus() {
       } catch {}
     }
     if (changed) broadcastStatus();
+    await pullDesktopPreferences();
   } catch {}
 }
 
