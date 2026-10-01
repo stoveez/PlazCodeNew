@@ -1,6 +1,10 @@
-PlazCode 1.18.60
+PlazCode 1.18.61
 
 Changes:
+- Replace the native egui presentation layer with an HTML/CSS WebView2 desktop shell so the real app can closely follow the approved PlazCode preview instead of approximating it with stock native widgets.
+- Keep the existing Rust bridge, Studio MCP, AgentScript, tool catalog, MCP catalog, autosave, process cleanup, extension sync, and background behavior underneath the new presentation layer.
+- Implement Home, Tools, MCP Servers, Terminal, and Settings as real live-data screens. There is no desktop Chat page, no mountain artwork, no marketing slogan, no AI-companion subtitle, and no fake tool/MCP artwork.
+- Add CI guards that parse the embedded desktop JavaScript, enforce the WebView UI contracts, reject removed design content, and require the extension version to exactly match the Rust desktop package version.
 - Automatically clean up stale PlazCode.exe and plazcode-agent.exe processes on startup when there is no healthy same-version instance to reuse. A graceful local shutdown is attempted first for version upgrades, followed by a targeted force-clean fallback only for known PlazCode process names.
 - Synchronize the browser extension and desktop app at version 1.18.60, including manifest version, popup title, pairing message, regression guard, and distribution filename.
 - Fix broken/cramped desktop layout behavior with a real vertical page scroll area, width-aware responsive Home/Tools/MCP grids, smaller stable hero/sidebar proportions, truncated long activity rows, and glow rendering constrained inside component bounds so card edges are not clipped.
@@ -36,13 +40,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.60.zip.
+- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.61.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.60.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.61.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -63,5 +67,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.60.zip.
+- Distribute the complete PlazCode-1.18.61.zip.
 - Keep the extension and desktop app from the same build together.
