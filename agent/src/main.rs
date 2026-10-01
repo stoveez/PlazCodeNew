@@ -377,7 +377,7 @@ fn reclaim_port(port: u16) -> anyhow::Result<()> {
     let Some(pid) = port_owner_pid(port) else { return Ok(()); };
     if pid == std::process::id() { return Ok(()); }
     let image = process_image(pid).unwrap_or_default();
-    if image.contains("plazcode-agent") || image.contains("or-agent") || image.contains("totalscript-agent") || image.contains("robloxscript-agent") {
+    if image.contains("plazcode.exe") || image.contains("plazcode-agent") || image.contains("or-agent") || image.contains("totalscript-agent") || image.contains("robloxscript-agent") {
         tracing::info!("killing stale PlazCode Agent (pid {pid}) on port {port}...");
         let _ = std::process::Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
@@ -397,6 +397,24 @@ fn reclaim_port(port: u16) -> anyhow::Result<()> {
 }
 #[cfg(not(windows))]
 fn reclaim_port(_port: u16) -> anyhow::Result<()> { Ok(()) }
+
+async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
+    if !addr.ip().is_loopback() {
+        return false;
+    }
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_millis(900))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+    let url = format!("http://{addr}/api/show");
+    match client.post(url).bearer_auth(pairing_key).send().await {
+        Ok(response) => response.status().is_success(),
+        Err(_) => false,
+    }
+}
 
 fn env_first(keys: &[&str]) -> Option<String> {
     keys.iter().find_map(|k| std::env::var(k).ok().filter(|s| !s.trim().is_empty()))
@@ -431,6 +449,10 @@ async fn start() -> anyhow::Result<()> {
     let (result_tx, _) = broadcast::channel::<ExecResult>(128);
     let addr: SocketAddr = args.roblox_addr.parse().unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 3000)));
     anyhow::ensure!(addr.ip().is_loopback(), "The bridge must bind to a loopback address");
+    if !args.headless && focus_existing(addr, pairing_key.as_str()).await {
+        info!("existing PlazCode instance found — requested its desktop window and exiting launcher process");
+        return Ok(());
+    }
     let ws_override = env_first(&["PLAZCODE_WORKSPACE_ROOT", "ROBLOXSCRIPT_WORKSPACE_ROOT"])
         .or_else(|| args.workspace.clone());
     let workspace = Arc::new(workspace::Workspace::new(ws_override.as_deref())?);
@@ -484,7 +506,7 @@ async fn start() -> anyhow::Result<()> {
     } else {
         match gui::run_gui(shared, restart_tx, preferences) {
             Ok(()) => {
-                info!("window closed — killing MCP helper tree and exiting");
+                info!("PlazCode exit requested — killing MCP helper tree and exiting");
                 shutdown_state.roblox_mcp.lock().await.reset().await;
                 std::process::exit(0);
             }
@@ -544,6 +566,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/result", post(result_handler))
         .route("/api/disconnect", post(disconnect_handler))
         .route("/api/status", get(status_handler))
+        .route("/api/show", post(show_handler))
         .route("/api/local-full", post(local_full_handler))
         .route("/api/preferences", get(preferences_get_handler).post(preferences_post_handler))
         .route("/api/mcp/catalog", get(mcp_catalog_handler))
@@ -611,6 +634,11 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
     state.workspace.set_full_access(req.enabled);
     info!("local_full set to {} via HTTP", req.enabled);
     Json(serde_json::json!({"ok": true, "local_full": req.enabled}))
+}
+
+async fn show_handler(State(state): State<AppState>) -> impl IntoResponse {
+    state.ui.request_show();
+    Json(serde_json::json!({"ok": true, "visible": true}))
 }
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
