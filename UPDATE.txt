@@ -1,6 +1,9 @@
-PlazCode 1.18.64
+PlazCode 1.18.65
 
 Changes:
+- Restore vertical scrolling across all desktop pages by fixing the WebView flex/grid min-height constraints. Home, Tools, MCP Servers, Terminal, and Settings now scroll whenever content exceeds the window height.
+- Keep the sidebar and titlebar fixed while only the page content region scrolls, with a visible stable scrollbar and extra bottom padding so lower cards are reachable.
+- Reset the page scroll position to the top when switching sections and add a regression guard for the desktop scroll-container contract.
 - Load the desktop HTML/CSS directly from the packaged executable through a dedicated plazcode:// custom WebView protocol instead of navigating the WebView to http://127.0.0.1:3000/desktop. The PlazCode window now renders even if the local bridge is still starting, so the app cannot fall through to an Edge ERR_CONNECTION_REFUSED page.
 - Keep the existing authenticated loopback APIs for live state/actions. The desktop uses the dedicated http://plazcode.localhost WebView origin on Windows, while generic webpage and null origins remain rejected and the existing bearer pairing key remains required.
 - Treat temporary bridge-startup connection failures as a retry/reconnecting state instead of reporting them as fatal JavaScript crashes.
@@ -49,13 +52,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.64.zip.
+- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.65.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.64.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.65.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -76,5 +79,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.64.zip.
+- Distribute the complete PlazCode-1.18.65.zip.
 - Keep the extension and desktop app from the same build together.
