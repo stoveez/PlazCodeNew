@@ -1,6 +1,6 @@
 [package]
 name = "plazcode-agent"
-version = "1.18.58"
+version = "1.18.59"
 edition = "2021"
 description = "PlazCode native agent — Roblox Studio MCP + AgentScript workspace bridge"
 license = "GPL-3.0-or-later"
