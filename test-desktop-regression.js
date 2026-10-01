@@ -111,6 +111,193 @@ const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if (!desktopScript) throw new Error("Desktop WebView script block missing");
 new Function(desktopScript);
 
+class FakeClassList {
+  constructor(initial = []) {
+    this.values = new Set(initial);
+  }
+  toggle(name, force) {
+    if (force === undefined) {
+      if (this.values.has(name)) this.values.delete(name);
+      else this.values.add(name);
+      return this.values.has(name);
+    }
+    if (force) this.values.add(name);
+    else this.values.delete(name);
+    return !!force;
+  }
+  contains(name) {
+    return this.values.has(name);
+  }
+}
+
+class FakeElement {
+  constructor(id = "", attrs = {}, classes = []) {
+    this.id = id;
+    this.attrs = { ...attrs };
+    this.classList = new FakeClassList(classes);
+    this.listeners = {};
+    this.style = {};
+    this.innerHTML = "";
+    this.textContent = "";
+    this.value = "";
+    this.disabled = false;
+    this.scrollTop = 0;
+    this.scrollHeight = 0;
+    this.onclick = null;
+  }
+  getAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null;
+  }
+  addEventListener(name, fn) {
+    this.listeners[name] = fn;
+  }
+  closest() {
+    return null;
+  }
+}
+
+function runDesktopInteractionRegression() {
+  const ids = [...desktopHtml.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+  const elementsById = new Map(ids.map((id) => [id, new FakeElement(id)]));
+
+  const pages = [...desktopHtml.matchAll(/<section class="([^"]*\bpage\b[^"]*)" id="([^"]+)"/g)].map((m) => {
+    const classes = m[1].split(/\s+/).filter(Boolean);
+    const el = elementsById.get(m[2]) || new FakeElement(m[2]);
+    el.classList = new FakeClassList(classes);
+    elementsById.set(m[2], el);
+    return el;
+  });
+
+  const navButtons = [...desktopHtml.matchAll(/<button class="([^"]*\bnavbtn\b[^"]*)" data-page="([^"]+)"/g)].map((m) => {
+    return new FakeElement("", { "data-page": m[2] }, m[1].split(/\s+/).filter(Boolean));
+  });
+
+  const goButtons = [...desktopHtml.matchAll(/data-go="([^"]+)"/g)].map((m) => {
+    return new FakeElement("", { "data-go": m[1] });
+  });
+
+  const ipcButtons = [...desktopHtml.matchAll(/data-ipc="([^"]+)"/g)].map((m) => {
+    return new FakeElement("", { "data-ipc": m[1] });
+  });
+
+  const selectPrefs = [];
+  const togglePrefs = [];
+  const dynamicFilters = [];
+  const dynamicMcp = [];
+  const ipcMessages = [];
+
+  const document = {
+    readyState: "complete",
+    getElementById(id) {
+      return elementsById.get(id) || null;
+    },
+    querySelectorAll(selector) {
+      if (selector === ".page") return pages;
+      if (selector === ".navbtn") return navButtons;
+      if (selector === "[data-page]") return navButtons;
+      if (selector === "[data-go]") return goButtons;
+      if (selector === "[data-ipc]") return ipcButtons;
+      if (selector === "select[data-pref]") return selectPrefs;
+      if (selector === ".toggle[data-pref]") return togglePrefs;
+      if (selector === "[data-filter]") return dynamicFilters;
+      if (selector === "[data-mcp]") return dynamicMcp;
+      return [];
+    },
+    addEventListener() {}
+  };
+
+  const window = {
+    ipc: {
+      postMessage(message) {
+        ipcMessages.push(String(message));
+      }
+    },
+    addEventListener() {},
+    setInterval() {
+      return 1;
+    }
+  };
+
+  const fakeState = {
+    bridge_connected: true,
+    studio_running: true,
+    mcp_alive: true,
+    workspace_ready: true,
+    workspace_root: "C:\\PlazCodeWorkspace",
+    tools: [],
+    servers: [],
+    logs: [],
+    fatal: null,
+    preferences: {}
+  };
+
+  function fetch(url) {
+    const body = String(url).includes("/api/mcp/catalog")
+      ? { servers: [] }
+      : fakeState;
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json() {
+        return Promise.resolve(body);
+      }
+    });
+  }
+
+  const vm = require("vm");
+  vm.runInNewContext(desktopScript, {
+    document,
+    window,
+    fetch,
+    Headers,
+    console,
+    Promise,
+    Object,
+    Array,
+    String,
+    JSON,
+    Error,
+    RegExp,
+    setTimeout,
+    clearTimeout
+  }, { timeout: 2000 });
+
+  if (!window.PlazCodeDesktop || typeof window.PlazCodeDesktop.go !== "function") {
+    throw new Error("Desktop UI bootstrap did not expose PlazCodeDesktop.go");
+  }
+  if (!ipcMessages.includes("ui-ready")) {
+    throw new Error("Desktop UI did not emit ui-ready");
+  }
+
+  for (const pageName of ["home", "tools", "mcp", "terminal", "settings"]) {
+    window.PlazCodeDesktop.go(pageName);
+    const page = elementsById.get("page-" + pageName);
+    if (!page || !page.classList.contains("active")) {
+      throw new Error("Desktop navigation failed for page: " + pageName);
+    }
+    for (const other of pages) {
+      if (other !== page && other.classList.contains("active")) {
+        throw new Error("Multiple desktop pages active after navigating to: " + pageName);
+      }
+    }
+    const nav = navButtons.find((button) => button.getAttribute("data-page") === pageName);
+    if (!nav || !nav.classList.contains("active")) {
+      throw new Error("Desktop nav active state failed for page: " + pageName);
+    }
+  }
+
+  const minimize = ipcButtons.find((button) => button.getAttribute("data-ipc") === "minimize");
+  if (!minimize || typeof minimize.onclick !== "function") {
+    throw new Error("Desktop minimize IPC button was not bound");
+  }
+  minimize.onclick();
+  if (!ipcMessages.includes("minimize")) {
+    throw new Error("Desktop minimize IPC message was not emitted");
+  }
+}
+
+runDesktopInteractionRegression();
+
 if (!cargoToml.includes('wry = { version = "0.57.0"') || !cargoToml.includes('tao = { version = "0.37.0"')) {
   throw new Error("WebView2/Tao desktop renderer dependencies missing");
 }
