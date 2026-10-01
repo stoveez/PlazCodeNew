@@ -1589,6 +1589,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (!connected) connect(); // self-heal after a worker wake-up
         sendResponse(statusObj());
         break;
+      case "desktop_tools_snapshot": {
+        try {
+          const rows = Array.isArray(msg.tools) ? msg.tools : [];
+          const response = await bridgeFetch("http://127.0.0.1:3000/api/tools/browser", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tools: rows }),
+          });
+          const body = await response.json().catch(() => ({}));
+          sendResponse({ ok: response.ok, ...body });
+        } catch (error) {
+          sendResponse({ ok: false, error: String(error && error.message || error) });
+        }
+        break;
+      }
       case "list_tools": {
         // Prefer a live refresh; fall back to cache so the loop never stalls.
         // 10s, not 25s: a catalogue request only blocks this long when one of the
