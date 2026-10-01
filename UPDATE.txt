@@ -1,6 +1,11 @@
-PlazCode 1.18.56
+PlazCode 1.18.57
 
 Changes:
+- Replace the plain utility-style desktop layout with the production PlazCode dashboard design: stronger sidebar, branded header, cleaner status cards, quick actions, recent activity, and improved spacing.
+- Redesign Tools as a real data-driven RS / AS / PC / MCP catalog with source filters and searchable live entries; no decorative marketplace images or fake tool metadata.
+- Redesign MCP Servers as a live server-management catalog with primary Roblox Studio status plus real optional-server states and enable/disable actions; no decorative server artwork.
+- Redesign Terminal and Settings around the same dark navy + orange glow language while keeping all existing bridge, autosave, background, permissions, reasoning, and MCP behavior.
+- Add a branded PlazCode runtime icon and stamp the same PlazCode identity into the packaged Windows executable so File Explorer, taskbar, and titlebar no longer use the generic app icon.
 - Rename the obvious Windows desktop launcher to PlazCode.exe. plazcode-agent.exe is still included as a compatibility alias.
 - Redesign the native desktop control center around the extension's dark navy + warm gold PlazCode theme.
 - Closing the desktop window now hides it while the bridge keeps running in the background. Launching PlazCode.exe again reopens the existing background instance instead of starting a second bridge.
@@ -21,13 +26,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe and packages PlazCode-1.18.56.zip.
+- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.57.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.56.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.57.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -48,5 +53,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.56.zip.
+- Distribute the complete PlazCode-1.18.57.zip.
 - Keep the extension and desktop app from the same build together.
