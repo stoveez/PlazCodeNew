@@ -420,6 +420,7 @@ const WIKI_JSON = JSON.stringify({ query: { search: [{ title: "Roblox" }, { titl
   // McpOutput{text, images} and the frame carries "images" — the JS must keep it.
   {
     const { ctx, listeners, sockets } = makeWorker(async () => ({}));
+    await new Promise((r) => setTimeout(r, 0));
     const sock = sockets[sockets.length - 1];
     ok("the worker dials the bridge on startup", !!sock && /^ws:\/\/127\.0\.0\.1:\d+$/.test(sock.url), sock && sock.url);
     sock.onopen();
@@ -440,6 +441,7 @@ const WIKI_JSON = JSON.stringify({ query: { search: [{ title: "Roblox" }, { titl
     // Same call, text-only answer: no phantom image may be invented.
     const { listeners, sockets } = makeWorker(async () => ({}));
     sockets[sockets.length - 1].onopen();
+    await new Promise((r) => setTimeout(r, 0));
     const sock = sockets[sockets.length - 1];
     const pending = ask(listeners, { type: "call_tool", name: "execute_luau", arguments: {} });
     await new Promise((r) => setTimeout(r, 60));
@@ -452,6 +454,7 @@ const WIKI_JSON = JSON.stringify({ query: { search: [{ title: "Roblox" }, { titl
   {
     const { listeners, sockets } = makeWorker(async () => ({}));
     sockets[sockets.length - 1].onopen();
+    await new Promise((r) => setTimeout(r, 0));
     const sock = sockets[sockets.length - 1];
     const pending = ask(listeners, { type: "call_tool", name: "execute_luau", arguments: {} });
     await new Promise((r) => setTimeout(r, 60));
