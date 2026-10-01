@@ -65,6 +65,8 @@ fn init_file_logger(ui: Option<Arc<gui::UiShared>>) {
 mod gui;
 mod workspace;
 mod security;
+mod preferences;
+mod mcp_addons;
 
 #[cfg(windows)]
 mod win_msg {
@@ -118,10 +120,21 @@ struct AppState {
     mcp_in_flight: Arc<AtomicUsize>,
     roblox_proc: Arc<AtomicBool>,
     roblox_editor_connected: Arc<AtomicBool>,
+    addons: Arc<Mutex<mcp_addons::AddonManager>>,
+    preferences: Arc<preferences::PreferencesStore>,
+    ui: Arc<gui::UiShared>,
 }
 
 impl AppState {
-    fn new(result_tx: broadcast::Sender<ExecResult>, mcp_alive: Arc<AtomicBool>, roblox_proc: Arc<AtomicBool>, workspace: Arc<workspace::Workspace>, pairing_key: Arc<String>) -> Self {
+    fn new(
+        result_tx: broadcast::Sender<ExecResult>,
+        mcp_alive: Arc<AtomicBool>,
+        roblox_proc: Arc<AtomicBool>,
+        workspace: Arc<workspace::Workspace>,
+        pairing_key: Arc<String>,
+        preferences: Arc<preferences::PreferencesStore>,
+        ui: Arc<gui::UiShared>,
+    ) -> Self {
         Self {
             pairing_key,
             roblox_queue: Arc::new(Mutex::new(VecDeque::new())),
@@ -133,6 +146,9 @@ impl AppState {
             mcp_in_flight: Arc::new(AtomicUsize::new(0)),
             roblox_proc,
             roblox_editor_connected: Arc::new(AtomicBool::new(false)),
+            addons: Arc::new(Mutex::new(mcp_addons::AddonManager::new())),
+            preferences,
+            ui,
         }
     }
 }
@@ -418,7 +434,9 @@ async fn start() -> anyhow::Result<()> {
     let ws_override = env_first(&["PLAZCODE_WORKSPACE_ROOT", "ROBLOXSCRIPT_WORKSPACE_ROOT"])
         .or_else(|| args.workspace.clone());
     let workspace = Arc::new(workspace::Workspace::new(ws_override.as_deref())?);
-    if env_first(&["PLAZCODE_FULL_ACCESS", "ROBLOXSCRIPT_FULL_ACCESS"]).map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false) {
+    let preferences = Arc::new(preferences::PreferencesStore::load());
+    if env_first(&["PLAZCODE_FULL_ACCESS", "ROBLOXSCRIPT_FULL_ACCESS"]).map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false)
+        || preferences.snapshot().perm_mode == "full" {
         workspace.set_full_access(true);
     }
     shared.attach_workspace(workspace.root_display(), workspace.full_flag());
@@ -427,7 +445,15 @@ async fn start() -> anyhow::Result<()> {
     if workspace.full_access() { shared.log("FULL PC ACCESS enabled at boot (PLAZCODE_FULL_ACCESS=1)"); }
     shared.log("listening: http://127.0.0.1:3000 · ws 17613 (roblox) · 17615 (agentscript)");
     shared.log("keys: [R] restart mcp · [C] clear console · [1-4] filter level");
-    let state = AppState::new(result_tx, mcp_alive, roblox_proc.clone(), workspace, pairing_key);
+    let state = AppState::new(
+        result_tx,
+        mcp_alive,
+        roblox_proc.clone(),
+        workspace,
+        pairing_key,
+        preferences.clone(),
+        shared.clone(),
+    );
     let (restart_tx, mut restart_rx) = tokio::sync::mpsc::unbounded_channel::<()>();
     let rr_state = state.clone();
     tokio::spawn(async move {
@@ -456,7 +482,7 @@ async fn start() -> anyhow::Result<()> {
         let _ = server.await;
         Ok(())
     } else {
-        match gui::run_gui(shared, restart_tx) {
+        match gui::run_gui(shared, restart_tx, preferences) {
             Ok(()) => {
                 info!("window closed — killing MCP helper tree and exiting");
                 shutdown_state.roblox_mcp.lock().await.reset().await;
@@ -519,6 +545,9 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/disconnect", post(disconnect_handler))
         .route("/api/status", get(status_handler))
         .route("/api/local-full", post(local_full_handler))
+        .route("/api/preferences", get(preferences_get_handler).post(preferences_post_handler))
+        .route("/api/mcp/catalog", get(mcp_catalog_handler))
+        .route("/api/mcp/toggle", post(mcp_toggle_handler))
         .route("/ws", get(ws_handler))
         .layer(axum::middleware::from_fn_with_state(state.pairing_key.clone(), security::require_pairing))
         .with_state(state)
@@ -584,6 +613,54 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
     Json(serde_json::json!({"ok": true, "local_full": req.enabled}))
 }
 
+async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
+    Json(serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({})))
+}
+
+async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    match state.preferences.patch(req) {
+        Ok(prefs) => {
+            state.workspace.set_full_access(prefs.perm_mode == "full");
+            Json(serde_json::json!({"ok": true, "preferences": prefs})).into_response()
+        }
+        Err(error) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+        ).into_response(),
+    }
+}
+
+async fn mcp_catalog_handler() -> impl IntoResponse {
+    let cfg = mcp_addons::read_config();
+    let entries: Vec<serde_json::Value> = mcp_addons::catalog().into_iter().map(|entry| {
+        serde_json::json!({
+            "id": entry.id,
+            "name": entry.name,
+            "description": entry.description,
+            "command": entry.command,
+            "args": entry.args,
+            "enabled": cfg.servers.contains_key(entry.id),
+        })
+    }).collect();
+    Json(serde_json::json!({"ok": true, "servers": entries}))
+}
+
+#[derive(serde::Deserialize)]
+struct McpToggleReq { id: String, enabled: bool }
+
+async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpToggleReq>) -> impl IntoResponse {
+    match mcp_addons::set_catalog_enabled(&req.id, req.enabled) {
+        Ok(()) => {
+            state.addons.lock().await.reset_all().await;
+            Json(serde_json::json!({"ok": true, "id": req.id, "enabled": req.enabled})).into_response()
+        }
+        Err(error) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+        ).into_response(),
+    }
+}
+
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {    Json(serde_json::json!({
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
@@ -619,27 +696,38 @@ impl Drop for InFlight<'_> {
 
 async fn roblox_tools(state: &AppState) -> anyhow::Result<Vec<serde_json::Value>> {
     let _busy = InFlight::enter(&state.mcp_in_flight);
-    let mut mcp = state.roblox_mcp.lock().await;
-    match mcp.list_tools().await {
-        Ok(tools) => Ok(tools),
-        Err(error) => {
-            if !helper_is_dead(&error) { return Err(error); }
-            tracing::warn!("list_tools failed ({error:#}) — recycling helper once");
-            mcp.reset().await;
-            match mcp.list_tools().await {
-                Ok(tools) => Ok(tools),
-                Err(error2) => {
-                    tracing::warn!("list_tools retry failed: {error2:#}");
-                    if helper_is_dead(&error2) { mcp.reset().await; }
-                    Err(error2)
+    let mut primary = {
+        let mut mcp = state.roblox_mcp.lock().await;
+        match mcp.list_tools().await {
+            Ok(tools) => tools,
+            Err(error) => {
+                if !helper_is_dead(&error) { return Err(error); }
+                tracing::warn!("list_tools failed ({error:#}) — recycling helper once");
+                mcp.reset().await;
+                match mcp.list_tools().await {
+                    Ok(tools) => tools,
+                    Err(error2) => {
+                        tracing::warn!("list_tools retry failed: {error2:#}");
+                        if helper_is_dead(&error2) { mcp.reset().await; }
+                        return Err(error2);
+                    }
                 }
             }
         }
-    }
+    };
+
+    let (addon_tools, addon_servers) = state.addons.lock().await.list_tools().await;
+    primary.extend(addon_tools);
+    state.ui.set_tool_snapshot(&primary, addon_servers);
+    Ok(primary)
 }
 
 async fn roblox_tool(state: &AppState, name: &str, args: serde_json::Value) -> anyhow::Result<McpOutput> {
     let _busy = InFlight::enter(&state.mcp_in_flight);
+    if name.contains("__") {
+        let (text, images) = state.addons.lock().await.call_tool(name, args).await?;
+        return Ok(McpOutput { text, images });
+    }
     let mut mcp = state.roblox_mcp.lock().await;
     match mcp.call_tool(name, args.clone()).await {
         Ok(result) => Ok(result),
@@ -865,7 +953,35 @@ async fn handle_legacy_ws(ws_stream: tokio_tungstenite::WebSocketStream<tokio::n
                             let _ = tx.send(response.to_string());
                         });
                     },
-                    "add_server" | "remove_server" => { send_json(&out_tx, serde_json::json!({"type":"error","id":id,"error":"Custom MCP servers are not supported by the native bridge yet; use Roblox Studio's built-in MCP server directly."})); },
+                    "add_server" => {
+                        let server_id = val.get("server_id").or_else(|| val.get("id")).and_then(|v| v.as_str()).unwrap_or("");
+                        let command = val.get("command").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let args = val.get("args").and_then(|v| v.as_array()).map(|items| {
+                            items.iter().filter_map(|v| v.as_str().map(str::to_string)).collect::<Vec<_>>()
+                        }).unwrap_or_default();
+                        let env = val.get("env").and_then(|v| v.as_object()).map(|items| {
+                            items.iter().filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string()))).collect::<HashMap<_, _>>()
+                        }).unwrap_or_default();
+                        let result = mcp_addons::add_server(server_id, mcp_addons::ServerSpec { command, args, env });
+                        if result.is_ok() {
+                            state.addons.lock().await.reset_all().await;
+                        }
+                        send_json(&out_tx, match result {
+                            Ok(()) => serde_json::json!({"type":"server_changed","id":id,"ok":true,"server_id":server_id}),
+                            Err(error) => serde_json::json!({"type":"server_changed","id":id,"ok":false,"error":error.to_string()}),
+                        });
+                    },
+                    "remove_server" => {
+                        let server_id = val.get("server_id").or_else(|| val.get("id")).and_then(|v| v.as_str()).unwrap_or("");
+                        let result = mcp_addons::remove_server(server_id);
+                        if result.is_ok() {
+                            state.addons.lock().await.reset_all().await;
+                        }
+                        send_json(&out_tx, match result {
+                            Ok(()) => serde_json::json!({"type":"server_changed","id":id,"ok":true,"server_id":server_id}),
+                            Err(error) => serde_json::json!({"type":"server_changed","id":id,"ok":false,"error":error.to_string()}),
+                        });
+                    },
                     _ => { send_json(&out_tx, serde_json::json!({"type":"error","id":id,"error":"unknown bridge message type"})); }
                 }
             }
