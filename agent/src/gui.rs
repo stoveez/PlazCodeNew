@@ -520,7 +520,7 @@ impl AgentApp {
     fn render_sidebar(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("plazcode-sidebar")
             .resizable(false)
-            .exact_width(198.0)
+            .exact_width(218.0)
             .frame(
                 egui::Frame::none()
                     .fill(SIDEBAR)
@@ -529,23 +529,26 @@ impl AgentApp {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let (rect, _) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), egui::Sense::hover());
-                    ui.painter().rect_filled(rect, egui::Rounding::same(9.0), PANEL_HI);
-                    ui.painter().rect_stroke(
-                        rect,
-                        egui::Rounding::same(9.0),
-                        egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.8)),
-                    );
-                    ui.painter().text(
-                        rect.center(),
-                        egui::Align2::CENTER_CENTER,
-                        "P",
-                        egui::FontId::proportional(20.0),
-                        ACCENT_HI,
-                    );
+                    let (rect, _) = ui.allocate_exact_size(egui::vec2(44.0, 44.0), egui::Sense::hover());
+                    for (expand, alpha) in [(1.0, 80u8), (4.0, 30u8), (8.0, 10u8)] {
+                        ui.painter().rect_stroke(
+                            rect.expand(expand),
+                            egui::Rounding::same(11.0),
+                            egui::Stroke::new(
+                                1.0,
+                                egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), alpha),
+                            ),
+                        );
+                    }
+                    ui.painter().rect_filled(rect, egui::Rounding::same(11.0), PANEL_HI);
+                    Self::paint_logo(ui, rect.shrink(7.0), ACCENT_HI);
                     ui.vertical(|ui| {
-                        ui.label(egui::RichText::new("PlazCode").size(16.0).strong().color(FG));
-                        ui.label(egui::RichText::new(format!("Desktop v{}", display_version())).size(9.0).color(FAINT));
+                        ui.add_space(3.0);
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new("Plaz").size(17.5).strong().color(FG));
+                            ui.label(egui::RichText::new("Code").size(17.5).strong().color(ACCENT_HI));
+                        });
+                        ui.label(egui::RichText::new(format!("v{}", display_version())).size(8.8).color(FAINT));
                     });
                 });
 
@@ -638,17 +641,28 @@ impl AgentApp {
     }
 
     fn hero(&self, ui: &mut egui::Ui) {
-        egui::Frame::none()
-            .fill(egui::Color32::from_rgb(8, 22, 39))
-            .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.45)))
-            .rounding(egui::Rounding::same(14.0))
-            .inner_margin(egui::Margin::symmetric(20.0, 17.0))
+        let shown = egui::Frame::none()
+            .fill(egui::Color32::from_rgb(6, 15, 28))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(255, 145, 38, 92)))
+            .rounding(egui::Rounding::same(15.0))
+            .inner_margin(egui::Margin::symmetric(24.0, 20.0))
             .show(ui, |ui| {
+                ui.set_min_height(150.0);
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        ui.label(egui::RichText::new("PlazCode").size(31.0).strong().color(FG));
-                        ui.label(egui::RichText::new("Your browser-first Roblox AI development control center.").size(11.5).color(DIM));
-                        ui.add_space(8.0);
+                        ui.add_space(5.0);
+                        ui.label(egui::RichText::new("Welcome to").size(23.0).strong().color(FG));
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new("Plaz").size(42.0).strong().color(FG));
+                            ui.label(egui::RichText::new("Code").size(42.0).strong().color(ACCENT_HI));
+                        });
+                        ui.add_space(2.0);
+                        ui.label(
+                            egui::RichText::new("Your AI-powered development companion for Roblox.")
+                                .size(12.0)
+                                .color(DIM),
+                        );
+                        ui.add_space(11.0);
                         ui.horizontal_wrapped(|ui| {
                             badge(ui, "Browser AI", if self.shared.extension_recent() { "connected" } else { "waiting" });
                             badge(ui, "Bridge", "127.0.0.1");
@@ -657,43 +671,90 @@ impl AgentApp {
                     });
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        egui::Frame::none()
-                            .fill(egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 24))
-                            .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.7)))
-                            .rounding(egui::Rounding::same(14.0))
-                            .inner_margin(egui::Margin::symmetric(18.0, 10.0))
-                            .show(ui, |ui| {
-                                ui.label(egui::RichText::new("P").size(38.0).strong().color(ACCENT_HI));
-                            });
+                        let (logo_rect, _) = ui.allocate_exact_size(egui::vec2(180.0, 118.0), egui::Sense::hover());
+                        for (radius, alpha) in [(76.0, 7u8), (55.0, 10u8), (35.0, 13u8)] {
+                            ui.painter().circle_filled(
+                                logo_rect.center(),
+                                radius,
+                                egui::Color32::from_rgba_unmultiplied(255, 136, 31, alpha),
+                            );
+                        }
+                        Self::paint_logo(ui, logo_rect, ACCENT_HI);
                     });
                 });
             });
+        Self::glow_outline(ui, shown.response.rect, ACCENT, true);
     }
 
     fn stat_card(ui: &mut egui::Ui, title: &str, value: &str, subtitle: &str, color: egui::Color32, ok: bool) {
-        Self::glow_panel(if ok { color } else { GREY }).show(ui, |ui| {
-            ui.set_min_height(86.0);
-            ui.horizontal(|ui| {
-                Self::dot(ui, if ok { color } else { GREY });
-                ui.label(egui::RichText::new(title.to_uppercase()).size(9.0).strong().color(DIM));
+        let accent = if ok { color } else { GREY };
+        let shown = egui::Frame::none()
+            .fill(PANEL)
+            .stroke(egui::Stroke::new(1.0, accent.gamma_multiply(0.55)))
+            .rounding(egui::Rounding::same(12.0))
+            .inner_margin(egui::Margin::same(16.0))
+            .show(ui, |ui| {
+                ui.set_min_height(96.0);
+                ui.horizontal(|ui| {
+                    Self::dot(ui, accent);
+                    ui.label(egui::RichText::new(title.to_uppercase()).size(9.2).strong().color(DIM));
+                });
+                ui.add_space(10.0);
+                ui.label(egui::RichText::new(value).size(21.0).strong().color(FG));
+                ui.add_space(2.0);
+                ui.label(egui::RichText::new(subtitle).size(9.1).color(FAINT));
             });
-            ui.add_space(9.0);
-            ui.label(egui::RichText::new(value).size(19.0).strong().color(FG));
-            ui.label(egui::RichText::new(subtitle).size(9.0).color(FAINT));
-        });
+        Self::glow_outline(ui, shown.response.rect, accent, ok);
     }
 
     fn action_button(ui: &mut egui::Ui, title: &str, subtitle: &str) -> bool {
-        let button = egui::Button::new(
-            egui::RichText::new(format!("{title}\n{subtitle}"))
-                .size(10.5)
-                .color(FG)
-        )
-        .fill(PANEL_HI)
-        .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.35)))
-        .rounding(egui::Rounding::same(10.0))
-        .min_size(egui::vec2(ui.available_width(), 54.0));
-        ui.add(button).clicked()
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), 64.0),
+            egui::Sense::click(),
+        );
+        let hovered = response.hovered();
+        ui.painter().rect_filled(
+            rect,
+            egui::Rounding::same(10.0),
+            if hovered {
+                egui::Color32::from_rgb(16, 31, 50)
+            } else {
+                PANEL_HI
+            },
+        );
+        ui.painter().rect_stroke(
+            rect,
+            egui::Rounding::same(10.0),
+            egui::Stroke::new(
+                1.0,
+                if hovered { ACCENT } else { egui::Color32::from_rgb(39, 58, 82) },
+            ),
+        );
+        if hovered {
+            Self::glow_outline(ui, rect, ACCENT, false);
+        }
+        ui.painter().text(
+            egui::pos2(rect.left() + 15.0, rect.top() + 18.0),
+            egui::Align2::LEFT_CENTER,
+            title,
+            egui::FontId::proportional(11.4),
+            FG,
+        );
+        ui.painter().text(
+            egui::pos2(rect.left() + 15.0, rect.top() + 41.0),
+            egui::Align2::LEFT_CENTER,
+            subtitle,
+            egui::FontId::proportional(9.0),
+            FAINT,
+        );
+        ui.painter().text(
+            egui::pos2(rect.right() - 17.0, rect.center().y),
+            egui::Align2::CENTER_CENTER,
+            "›",
+            egui::FontId::proportional(20.0),
+            if hovered { ACCENT_HI } else { DIM },
+        );
+        response.clicked()
     }
 
     fn render_home(&mut self, ui: &mut egui::Ui) {
