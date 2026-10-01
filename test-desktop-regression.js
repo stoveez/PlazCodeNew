@@ -70,7 +70,51 @@ for (const path of requiredProviders) {
 }
 
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
-if (manifest.version !== "1.18.60") throw new Error("Expected extension version 1.18.60");
+if (manifest.version !== "1.18.61") throw new Error("Expected extension version 1.18.61");
+
+const cargoToml = fs.readFileSync("agent/Cargo.toml", "utf8");
+const cargoVersion = cargoToml.match(/^version = "([^"]+)"/m)?.[1];
+if (!cargoVersion) throw new Error("Could not read desktop package version from agent/Cargo.toml");
+if (manifest.version !== cargoVersion) {
+  throw new Error(`Extension/Desktop version drift: manifest=${manifest.version}, desktop=${cargoVersion}`);
+}
+
+const desktopHtml = fs.readFileSync("agent/src/desktop.html", "utf8");
+for (const token of [
+  'data-page="home"',
+  'data-page="tools"',
+  'data-page="mcp"',
+  'data-page="terminal"',
+  'data-page="settings"',
+  "/api/desktop/state",
+  "/api/desktop/preferences",
+  "/api/desktop/restart",
+  "/api/desktop/clear-logs",
+  "window.ipc.postMessage",
+  "Welcome to",
+  'class="hero-name">Plaz<span>Code</span>'
+]) {
+  if (!desktopHtml.includes(token)) throw new Error("Desktop WebView contract missing: " + token);
+}
+for (const forbidden of [
+  'data-page="chat"',
+  "BUILD MORE",
+  "CODE SMARTER",
+  "AI-powered development companion",
+  "development control center",
+  "swatch-night.jpg",
+  "mountain"
+]) {
+  if (desktopHtml.includes(forbidden)) throw new Error("Removed desktop UI content returned: " + forbidden);
+}
+const desktopScript = desktopHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+if (!desktopScript) throw new Error("Desktop WebView script block missing");
+new Function(desktopScript);
+
+if (!cargoToml.includes('wry = { version = "0.57.0"') || !cargoToml.includes('tao = { version = "0.37.0"')) {
+  throw new Error("WebView2/Tao desktop renderer dependencies missing");
+}
+if (cargoToml.includes("eframe =")) throw new Error("Legacy egui renderer dependency returned");
 for (const entry of manifest.content_scripts || []) {
   for (const path of entry.js || []) {
     if (!fs.existsSync(path)) throw new Error("Manifest references missing JS: " + path);
