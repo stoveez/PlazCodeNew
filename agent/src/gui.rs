@@ -565,12 +565,6 @@ impl AgentApp {
 
     fn render_header(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label(
-                egui::RichText::new("BUILD MORE  /  CODE SMARTER  /  WITH AI")
-                    .size(8.8)
-                    .color(FAINT)
-            );
-
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.add(
                     egui::Button::new(egui::RichText::new("Hide").size(10.0).strong().color(DIM))
