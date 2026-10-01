@@ -18,9 +18,15 @@ pub fn can_auto_pair(headers: &HeaderMap) -> bool {
 pub fn allowed_origin(headers: &HeaderMap) -> bool {
     match headers.get("origin") {
         None => true,
-        Some(value) => value.to_str().ok().and_then(|s| s.strip_prefix("chrome-extension://"))
-            .map(|id| id.len() == 32 && id.bytes().all(|c| (b'a'..=b'p').contains(&c)))
-            .unwrap_or(false),
+        Some(value) => {
+            let Ok(origin) = value.to_str() else { return false; };
+            if matches!(origin, "http://127.0.0.1:3000" | "http://localhost:3000") {
+                return true;
+            }
+            origin.strip_prefix("chrome-extension://")
+                .map(|id| id.len() == 32 && id.bytes().all(|c| (b'a'..=b'p').contains(&c)))
+                .unwrap_or(false)
+        }
     }
 }
 
