@@ -5,22 +5,24 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-const BG: egui::Color32 = egui::Color32::from_rgb(6, 20, 38);
-const SIDEBAR: egui::Color32 = egui::Color32::from_rgb(7, 24, 44);
-const PANEL: egui::Color32 = egui::Color32::from_rgb(9, 27, 49);
-const PANEL_HI: egui::Color32 = egui::Color32::from_rgb(16, 43, 73);
-const TERM: egui::Color32 = egui::Color32::from_rgb(4, 16, 30);
-const LINE: egui::Color32 = egui::Color32::from_rgb(105, 86, 46);
-const FG: egui::Color32 = egui::Color32::from_rgb(238, 244, 255);
-const DIM: egui::Color32 = egui::Color32::from_rgb(167, 184, 204);
-const FAINT: egui::Color32 = egui::Color32::from_rgb(113, 133, 158);
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(217, 173, 82);
-const ACCENT_HI: egui::Color32 = egui::Color32::from_rgb(240, 207, 122);
-const INK: egui::Color32 = egui::Color32::from_rgb(7, 20, 38);
-const GREEN: egui::Color32 = egui::Color32::from_rgb(88, 207, 139);
-const RED: egui::Color32 = egui::Color32::from_rgb(235, 101, 96);
-const AMBER: egui::Color32 = egui::Color32::from_rgb(240, 180, 90);
-const GREY: egui::Color32 = egui::Color32::from_rgb(78, 91, 112);
+const BG: egui::Color32 = egui::Color32::from_rgb(3, 10, 20);
+const SIDEBAR: egui::Color32 = egui::Color32::from_rgb(4, 13, 26);
+const PANEL: egui::Color32 = egui::Color32::from_rgb(8, 18, 33);
+const PANEL_HI: egui::Color32 = egui::Color32::from_rgb(13, 29, 50);
+const TERM: egui::Color32 = egui::Color32::from_rgb(2, 8, 16);
+const LINE: egui::Color32 = egui::Color32::from_rgb(35, 52, 73);
+const FG: egui::Color32 = egui::Color32::from_rgb(245, 248, 255);
+const DIM: egui::Color32 = egui::Color32::from_rgb(177, 194, 218);
+const FAINT: egui::Color32 = egui::Color32::from_rgb(104, 126, 154);
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(255, 145, 38);
+const ACCENT_HI: egui::Color32 = egui::Color32::from_rgb(255, 193, 82);
+const INK: egui::Color32 = egui::Color32::from_rgb(6, 13, 24);
+const GREEN: egui::Color32 = egui::Color32::from_rgb(49, 224, 164);
+const RED: egui::Color32 = egui::Color32::from_rgb(255, 105, 108);
+const AMBER: egui::Color32 = egui::Color32::from_rgb(255, 179, 63);
+const GREY: egui::Color32 = egui::Color32::from_rgb(74, 89, 112);
+const BLUE: egui::Color32 = egui::Color32::from_rgb(75, 160, 255);
+const PURPLE: egui::Color32 = egui::Color32::from_rgb(160, 106, 255);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ToolDisplay {
@@ -253,6 +255,20 @@ fn level_color(level: Level) -> egui::Color32 {
         Level::Warn => AMBER,
         Level::Info => egui::Color32::from_rgb(192, 204, 222),
     }
+}
+
+fn install_style(ctx: &egui::Context) {
+    let mut style = (*ctx.style()).clone();
+    style.spacing.item_spacing = egui::vec2(9.0, 9.0);
+    style.spacing.button_padding = egui::vec2(13.0, 8.0);
+    style.visuals.panel_fill = BG;
+    style.visuals.window_fill = PANEL;
+    style.visuals.faint_bg_color = PANEL_HI;
+    style.visuals.extreme_bg_color = TERM;
+    style.visuals.selection.bg_fill = ACCENT;
+    style.visuals.selection.stroke = egui::Stroke::new(1.0, ACCENT_HI);
+    style.visuals.hyperlink_color = ACCENT_HI;
+    ctx.set_style(style);
 }
 
 pub struct AgentApp {
