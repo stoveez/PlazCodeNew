@@ -117,6 +117,9 @@ pub fn write_config(cfg: &McpConfig) -> anyhow::Result<()> {
     let path = config_path();
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, serde_json::to_vec_pretty(cfg)?)?;
+    if path.exists() {
+        std::fs::remove_file(&path)?;
+    }
     std::fs::rename(tmp, path)?;
     Ok(())
 }
