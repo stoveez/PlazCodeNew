@@ -22,6 +22,13 @@ const RED: egui::Color32 = egui::Color32::from_rgb(235, 101, 96);
 const AMBER: egui::Color32 = egui::Color32::from_rgb(240, 180, 90);
 const GREY: egui::Color32 = egui::Color32::from_rgb(78, 91, 112);
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolDisplay {
+    pub name: String,
+    pub source: String,
+    pub available: bool,
+}
+
 pub struct UiShared {
     pub studio_running: AtomicBool,
     pub mcp_alive: Arc<AtomicBool>,
@@ -34,7 +41,7 @@ pub struct UiShared {
     pub show_requested: AtomicBool,
     pub quit_requested: AtomicBool,
     pub ui_context: Mutex<Option<egui::Context>>,
-    pub tools: Mutex<Vec<String>>,
+    pub tools: Mutex<Vec<ToolDisplay>>,
     pub servers: Mutex<Vec<mcp_addons::ServerSummary>>,
 }
 
@@ -146,15 +153,65 @@ impl UiShared {
         }
     }
 
-    pub fn set_tool_snapshot(&self, tools: &[serde_json::Value], servers: Vec<mcp_addons::ServerSummary>) {
-        if let Ok(mut names) = self.tools.lock() {
-            *names = tools.iter()
-                .filter_map(|tool| tool.get("name").and_then(|v| v.as_str()).map(str::to_string))
-                .collect();
-            names.sort();
+    fn replace_source_tools(&self, source: &str, tools: &[serde_json::Value], available: bool) {
+        if let Ok(mut rows) = self.tools.lock() {
+            rows.retain(|row| row.source != source);
+            rows.extend(tools.iter().filter_map(|tool| {
+                tool.get("name").and_then(|value| value.as_str()).map(|name| ToolDisplay {
+                    name: name.to_string(),
+                    source: source.to_string(),
+                    available,
+                })
+            }));
+            rows.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.name.cmp(&b.name)));
+            rows.dedup_by(|a, b| a.source == b.source && a.name == b.name);
+        }
+    }
+
+    pub fn set_roblox_tools(&self, tools: &[serde_json::Value], available: bool) {
+        self.replace_source_tools("Roblox Studio", tools, available);
+    }
+
+    pub fn set_local_tools(&self, tools: &[serde_json::Value], available: bool) {
+        self.replace_source_tools("AgentScript", tools, available);
+    }
+
+    pub fn set_addon_tools(&self, tools: &[serde_json::Value], servers: Vec<mcp_addons::ServerSummary>) {
+        if let Ok(mut rows) = self.tools.lock() {
+            rows.retain(|row| !row.source.starts_with("MCP / "));
+            for tool in tools {
+                let Some(name) = tool.get("name").and_then(|value| value.as_str()) else { continue; };
+                let server = tool.get("server").and_then(|value| value.as_str())
+                    .or_else(|| name.split_once("__").map(|parts| parts.0))
+                    .unwrap_or("addon");
+                rows.push(ToolDisplay {
+                    name: name.to_string(),
+                    source: format!("MCP / {server}"),
+                    available: true,
+                });
+            }
+            rows.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.name.cmp(&b.name)));
+            rows.dedup_by(|a, b| a.source == b.source && a.name == b.name);
         }
         if let Ok(mut current) = self.servers.lock() {
             *current = servers;
+        }
+    }
+
+    pub fn set_browser_tools(&self, tools: &[serde_json::Value]) {
+        if let Ok(mut rows) = self.tools.lock() {
+            rows.retain(|row| !row.source.starts_with("PlazCode"));
+            for tool in tools {
+                let Some(name) = tool.get("name").and_then(|value| value.as_str()) else { continue; };
+                let source = tool.get("source").and_then(|value| value.as_str()).unwrap_or("PlazCode");
+                rows.push(ToolDisplay {
+                    name: name.to_string(),
+                    source: source.to_string(),
+                    available: true,
+                });
+            }
+            rows.sort_by(|a, b| a.source.cmp(&b.source).then_with(|| a.name.cmp(&b.name)));
+            rows.dedup_by(|a, b| a.source == b.source && a.name == b.name);
         }
     }
 }
@@ -399,7 +456,7 @@ impl AgentApp {
     }
 
     fn render_tools(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "Tools", "Live tools discovered from Roblox Studio and enabled MCP add-ons.");
+        Self::section_title(ui, "Tools", "All currently usable PlazCode tools, grouped by where they run.");
 
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new("Filter").size(10.0).color(FAINT));
@@ -413,24 +470,37 @@ impl AgentApp {
 
         let tools = self.shared.tools.lock().map(|v| v.clone()).unwrap_or_default();
         let needle = self.tool_filter.trim().to_ascii_lowercase();
-        let filtered: Vec<String> = tools.into_iter()
-            .filter(|name| needle.is_empty() || name.to_ascii_lowercase().contains(&needle))
+        let filtered: Vec<ToolDisplay> = tools.into_iter()
+            .filter(|tool| {
+                needle.is_empty()
+                    || tool.name.to_ascii_lowercase().contains(&needle)
+                    || tool.source.to_ascii_lowercase().contains(&needle)
+            })
             .collect();
 
         Self::panel().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new(format!("{} tools", filtered.len())).size(10.0).strong().color(ACCENT_HI));
                 if filtered.is_empty() {
-                    ui.label(egui::RichText::new("Connect Studio or enable an MCP server to populate this list.").size(9.5).color(FAINT));
+                    ui.label(egui::RichText::new("No matching tools are currently available.").size(9.5).color(FAINT));
                 }
             });
             ui.add_space(8.0);
             egui::ScrollArea::vertical().id_salt("tools-list").max_height(510.0).show(ui, |ui| {
-                for name in filtered {
-                    let addon = name.contains("__");
+                for tool in filtered {
+                    let (tag, color) = if tool.source == "Roblox Studio" {
+                        ("RS", GREEN)
+                    } else if tool.source == "AgentScript" {
+                        ("AS", ACCENT_HI)
+                    } else if tool.source.starts_with("MCP / ") {
+                        ("MCP", AMBER)
+                    } else {
+                        ("PC", DIM)
+                    };
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(if addon { "MCP" } else { "RS" }).size(8.5).strong().color(if addon { ACCENT_HI } else { GREEN }));
-                        ui.label(egui::RichText::new(name).monospace().size(10.5).color(FG));
+                        ui.label(egui::RichText::new(tag).size(8.5).strong().color(if tool.available { color } else { GREY }));
+                        ui.label(egui::RichText::new(&tool.name).monospace().size(10.5).color(if tool.available { FG } else { GREY }));
+                        ui.label(egui::RichText::new(&tool.source).size(8.8).color(FAINT));
                     });
                     ui.add_space(3.0);
                 }
