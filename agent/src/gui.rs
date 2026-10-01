@@ -5,17 +5,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-const BG: egui::Color32 = egui::Color32::from_rgb(7, 10, 18);
-const SIDEBAR: egui::Color32 = egui::Color32::from_rgb(10, 14, 24);
-const PANEL: egui::Color32 = egui::Color32::from_rgb(14, 20, 32);
-const PANEL_HI: egui::Color32 = egui::Color32::from_rgb(18, 26, 42);
-const TERM: egui::Color32 = egui::Color32::from_rgb(6, 11, 18);
-const LINE: egui::Color32 = egui::Color32::from_rgb(38, 49, 68);
-const FG: egui::Color32 = egui::Color32::from_rgb(238, 243, 252);
-const DIM: egui::Color32 = egui::Color32::from_rgb(166, 178, 197);
-const FAINT: egui::Color32 = egui::Color32::from_rgb(102, 116, 140);
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(92, 140, 255);
-const ACCENT_HI: egui::Color32 = egui::Color32::from_rgb(131, 166, 255);
+const BG: egui::Color32 = egui::Color32::from_rgb(6, 20, 38);
+const SIDEBAR: egui::Color32 = egui::Color32::from_rgb(7, 24, 44);
+const PANEL: egui::Color32 = egui::Color32::from_rgb(9, 27, 49);
+const PANEL_HI: egui::Color32 = egui::Color32::from_rgb(16, 43, 73);
+const TERM: egui::Color32 = egui::Color32::from_rgb(4, 16, 30);
+const LINE: egui::Color32 = egui::Color32::from_rgb(105, 86, 46);
+const FG: egui::Color32 = egui::Color32::from_rgb(238, 244, 255);
+const DIM: egui::Color32 = egui::Color32::from_rgb(167, 184, 204);
+const FAINT: egui::Color32 = egui::Color32::from_rgb(113, 133, 158);
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(217, 173, 82);
+const ACCENT_HI: egui::Color32 = egui::Color32::from_rgb(240, 207, 122);
+const INK: egui::Color32 = egui::Color32::from_rgb(7, 20, 38);
 const GREEN: egui::Color32 = egui::Color32::from_rgb(88, 207, 139);
 const RED: egui::Color32 = egui::Color32::from_rgb(235, 101, 96);
 const AMBER: egui::Color32 = egui::Color32::from_rgb(240, 180, 90);
@@ -30,6 +31,9 @@ pub struct UiShared {
     pub fatal: Mutex<Option<String>>,
     pub logs: Mutex<VecDeque<String>>,
     pub extension_seen_ms: std::sync::atomic::AtomicU64,
+    pub show_requested: AtomicBool,
+    pub quit_requested: AtomicBool,
+    pub ui_context: Mutex<Option<egui::Context>>,
     pub tools: Mutex<Vec<String>>,
     pub servers: Mutex<Vec<mcp_addons::ServerSummary>>,
 }
@@ -47,6 +51,9 @@ impl UiShared {
             fatal: Mutex::new(None),
             logs: Mutex::new(VecDeque::with_capacity(LOG_CAP)),
             extension_seen_ms: std::sync::atomic::AtomicU64::new(0),
+            show_requested: AtomicBool::new(false),
+            quit_requested: AtomicBool::new(false),
+            ui_context: Mutex::new(None),
             tools: Mutex::new(Vec::new()),
             servers: Mutex::new(Vec::new()),
         }
@@ -104,6 +111,32 @@ impl UiShared {
             .unwrap_or_default()
             .as_millis() as u64;
         now.saturating_sub(seen) < 15_000
+    }
+
+    pub fn register_context(&self, ctx: &egui::Context) {
+        if let Ok(mut slot) = self.ui_context.lock() {
+            if slot.is_none() {
+                *slot = Some(ctx.clone());
+            }
+        }
+    }
+
+    pub fn request_show(&self) {
+        self.show_requested.store(true, Ordering::Relaxed);
+        if let Ok(slot) = self.ui_context.lock() {
+            if let Some(ctx) = slot.as_ref() {
+                ctx.request_repaint();
+            }
+        }
+    }
+
+    pub fn request_quit(&self) {
+        self.quit_requested.store(true, Ordering::Relaxed);
+        if let Ok(slot) = self.ui_context.lock() {
+            if let Some(ctx) = slot.as_ref() {
+                ctx.request_repaint();
+            }
+        }
     }
 
     pub fn set_fatal(&self, msg: String) {
@@ -203,9 +236,9 @@ impl AgentApp {
         let text = egui::RichText::new(format!("{icon}  {label}"))
             .size(12.0)
             .strong()
-            .color(if selected { FG } else { DIM });
+            .color(if selected { INK } else { DIM });
         let button = egui::Button::new(text)
-            .fill(if selected { PANEL_HI } else { egui::Color32::TRANSPARENT })
+            .fill(if selected { ACCENT } else { egui::Color32::TRANSPARENT })
             .stroke(if selected {
                 egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 120))
             } else {
@@ -226,13 +259,13 @@ impl AgentApp {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let (rect, _) = ui.allocate_exact_size(egui::vec2(28.0, 28.0), egui::Sense::hover());
-                    ui.painter().rect_filled(rect, egui::Rounding::same(7.0), ACCENT);
+                    ui.painter().rect_filled(rect, egui::Rounding::same(6.0), ACCENT);
                     ui.painter().text(
                         rect.center(),
                         egui::Align2::CENTER_CENTER,
                         "P",
                         egui::FontId::proportional(16.0),
-                        egui::Color32::WHITE,
+                        INK,
                     );
                     ui.vertical(|ui| {
                         ui.label(egui::RichText::new("PlazCode").size(14.0).strong().color(FG));
@@ -263,9 +296,18 @@ impl AgentApp {
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.add(
-                    egui::Button::new(egui::RichText::new("Restart MCP").size(10.5).strong().color(FG))
+                    egui::Button::new(egui::RichText::new("Hide").size(10.5).strong().color(DIM))
                         .fill(PANEL_HI)
                         .stroke(egui::Stroke::new(1.0, LINE))
+                        .rounding(egui::Rounding::same(7.0))
+                ).clicked() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                    self.shared.log("desktop window hidden — PlazCode is still running in the background");
+                }
+                if ui.add(
+                    egui::Button::new(egui::RichText::new("Restart MCP").size(10.5).strong().color(INK))
+                        .fill(ACCENT)
+                        .stroke(egui::Stroke::new(1.0, ACCENT_HI))
                         .rounding(egui::Rounding::same(7.0))
                 ).clicked() {
                     let _ = self.restart_tx.send(());
@@ -628,6 +670,32 @@ impl AgentApp {
             }
         }
 
+        ui.add_space(9.0);
+        Self::panel().show(ui, |ui| {
+            ui.label(egui::RichText::new("Desktop app").size(11.0).strong().color(FG));
+            ui.label(egui::RichText::new("Closing the window keeps PlazCode and the bridge running in the background. Launch PlazCode.exe again to reopen it.").size(9.5).color(FAINT));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.add(
+                    egui::Button::new(egui::RichText::new("Hide to background").size(10.0).strong().color(INK))
+                        .fill(ACCENT)
+                        .stroke(egui::Stroke::new(1.0, ACCENT_HI))
+                        .rounding(egui::Rounding::same(6.0))
+                ).clicked() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                    self.shared.log("desktop window hidden — PlazCode is still running in the background");
+                }
+                if ui.add(
+                    egui::Button::new(egui::RichText::new("Exit PlazCode").size(10.0).strong().color(RED))
+                        .fill(PANEL_HI)
+                        .stroke(egui::Stroke::new(1.0, RED.gamma_multiply(0.6)))
+                        .rounding(egui::Rounding::same(6.0))
+                ).clicked() {
+                    self.shared.request_quit();
+                }
+            });
+        });
+
         ui.add_space(10.0);
         ui.label(egui::RichText::new(format!("Saved locally to {}", self.preferences.path().display())).size(9.0).color(FAINT));
     }
@@ -635,7 +703,25 @@ impl AgentApp {
 
 impl App for AgentApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+        self.shared.register_context(ctx);
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
+
+        if self.shared.show_requested.swap(false, Ordering::Relaxed) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+
+        if self.shared.quit_requested.load(Ordering::Relaxed) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return;
+        }
+
+        if ctx.input(|input| input.viewport().close_requested()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.shared.log("desktop window hidden — PlazCode is still running in the background");
+            return;
+        }
 
         self.render_sidebar(ctx);
 
@@ -657,7 +743,7 @@ impl App for AgentApp {
 fn choice(ui: &mut egui::Ui, current: &mut String, value: &str, label: &str) -> bool {
     let selected = current == value;
     let clicked = ui.add(
-        egui::Button::new(egui::RichText::new(label).size(10.0).strong().color(if selected { egui::Color32::WHITE } else { DIM }))
+        egui::Button::new(egui::RichText::new(label).size(10.0).strong().color(if selected { INK } else { DIM }))
             .fill(if selected { ACCENT } else { PANEL_HI })
             .stroke(egui::Stroke::new(1.0, if selected { ACCENT_HI } else { LINE }))
             .rounding(egui::Rounding::same(6.0))
@@ -678,7 +764,7 @@ fn toggle_row(ui: &mut egui::Ui, title: &str, subtitle: &str, value: &mut bool) 
         });
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ui.add(
-                egui::Button::new(egui::RichText::new(if *value { "ON" } else { "OFF" }).size(9.5).strong().color(if *value { egui::Color32::WHITE } else { DIM }))
+                egui::Button::new(egui::RichText::new(if *value { "ON" } else { "OFF" }).size(9.5).strong().color(if *value { INK } else { DIM }))
                     .fill(if *value { ACCENT } else { PANEL_HI })
                     .stroke(egui::Stroke::new(1.0, if *value { ACCENT_HI } else { LINE }))
                     .rounding(egui::Rounding::same(10.0))
@@ -726,7 +812,7 @@ fn window_icon() -> Arc<egui::IconData> {
             let dx = x as i32 - 32;
             let dy = y as i32 - 32;
             if dx * dx + dy * dy < 28 * 28 {
-                rgba[i..i + 4].copy_from_slice(&[16, 27, 49, 255]);
+                rgba[i..i + 4].copy_from_slice(&[6, 20, 38, 255]);
             }
         }
     }
@@ -734,7 +820,7 @@ fn window_icon() -> Arc<egui::IconData> {
         for x in 18..46 {
             if x < 23 || x > 40 || y < 21 || y > 42 {
                 let i = (y * width + x) * 4;
-                rgba[i..i + 4].copy_from_slice(&[92, 140, 255, 255]);
+                rgba[i..i + 4].copy_from_slice(&[217, 173, 82, 255]);
             }
         }
     }
