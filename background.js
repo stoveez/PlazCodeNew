@@ -27,7 +27,7 @@ async function ensurePairing(force = false) {
         headers: { "Content-Type": "application/json", "X-PlazCode-Extension": chrome.runtime.id },
         body: "{}", signal: controller.signal,
       });
-      if (!response.ok) throw new Error("Automatic pairing failed; use the matching 1.18.63 agent and extension.");
+      if (!response.ok) throw new Error("Automatic pairing failed; use the matching 1.18.64 agent and extension.");
       const data = await response.json();
       if (!/^[a-f0-9]{64}$/i.test(data.key || "")) throw new Error("Agent returned an invalid pairing response");
       pairingKey = data.key;
