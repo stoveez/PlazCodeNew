@@ -21,13 +21,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe and packages PlazCode-1.18.56-SHARE.zip.
+- The Windows workflow builds PlazCode.exe and packages PlazCode-1.18.56.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.56-SHARE.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.56.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -48,5 +48,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.56-SHARE.zip.
+- Distribute the complete PlazCode-1.18.56.zip.
 - Keep the extension and desktop app from the same build together.
