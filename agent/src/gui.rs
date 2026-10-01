@@ -29,6 +29,7 @@ pub struct UiShared {
     pub workspace_root: Mutex<String>,
     pub fatal: Mutex<Option<String>>,
     pub logs: Mutex<VecDeque<String>>,
+    pub extension_seen_ms: std::sync::atomic::AtomicU64,
     pub tools: Mutex<Vec<String>>,
     pub servers: Mutex<Vec<mcp_addons::ServerSummary>>,
 }
@@ -45,6 +46,7 @@ impl UiShared {
             workspace_root: Mutex::new(String::new()),
             fatal: Mutex::new(None),
             logs: Mutex::new(VecDeque::with_capacity(LOG_CAP)),
+            extension_seen_ms: std::sync::atomic::AtomicU64::new(0),
             tools: Mutex::new(Vec::new()),
             servers: Mutex::new(Vec::new()),
         }
@@ -82,6 +84,26 @@ impl UiShared {
         if let Ok(mut logs) = self.logs.lock() {
             logs.clear();
         }
+    }
+
+    pub fn mark_extension_seen(&self) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+        self.extension_seen_ms.store(now, Ordering::Relaxed);
+    }
+
+    pub fn extension_recent(&self) -> bool {
+        let seen = self.extension_seen_ms.load(Ordering::Relaxed);
+        if seen == 0 {
+            return false;
+        }
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+        now.saturating_sub(seen) < 15_000
     }
 
     pub fn set_fatal(&self, msg: String) {
@@ -291,13 +313,15 @@ impl AgentApp {
         let studio = self.shared.studio_running.load(Ordering::Relaxed);
         let mcp = self.shared.mcp_alive.load(Ordering::Relaxed);
         let workspace = self.shared.workspace_ready.load(Ordering::Relaxed);
+        let extension = self.shared.extension_recent();
         let tools = self.shared.tools.lock().map(|v| v.len()).unwrap_or(0);
         let root = self.shared.workspace_root.lock().map(|v| v.clone()).unwrap_or_default();
 
-        ui.columns(3, |cols| {
-            Self::stat_card(&mut cols[0], "Roblox Studio", if studio && mcp { "Connected" } else if studio { "Open" } else { "Offline" }, "Built-in Studio MCP", studio && mcp);
-            Self::stat_card(&mut cols[1], "AgentScript", if workspace { "Ready" } else { "Offline" }, "Files + terminal workspace", workspace);
-            Self::stat_card(&mut cols[2], "Available tools", &tools.to_string(), "Studio + configured MCP", tools > 0);
+        ui.columns(4, |cols| {
+            Self::stat_card(&mut cols[0], "Browser extension", if extension { "Connected" } else { "Waiting" }, "Last contact < 15 seconds", extension);
+            Self::stat_card(&mut cols[1], "Roblox Studio", if studio && mcp { "Connected" } else if studio { "Open" } else { "Offline" }, "Built-in Studio MCP", studio && mcp);
+            Self::stat_card(&mut cols[2], "AgentScript", if workspace { "Ready" } else { "Offline" }, "Files + terminal workspace", workspace);
+            Self::stat_card(&mut cols[3], "Available tools", &tools.to_string(), "Studio + configured MCP", tools > 0);
         });
 
         ui.add_space(12.0);
