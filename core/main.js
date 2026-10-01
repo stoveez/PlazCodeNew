@@ -305,7 +305,7 @@
     if (_diag.length > RS_DIAG_MAX) _diag.shift();
     try { console.log("[rs-diag]", e.iso, event, JSON.stringify({ ...data, ...snap })); } catch {}
     try {
-      if (P.id !== "chatgpt" || e.t - lastDiagDomAt >= 1000) {
+      if (e.t - lastDiagDomAt >= 2000) {
         let n = document.getElementById("rs-diag-log");
         if (!n) { n = document.createElement("script"); n.type = "application/json"; n.id = "rs-diag-log"; (document.body || document.documentElement).appendChild(n); }
         n.textContent = JSON.stringify(_diag);
@@ -1664,9 +1664,45 @@
     }));
   }
 
+  const DESKTOP_UTILITY_TOOLS = [
+    "list_commands", "list_mcp_servers", "plazcode_status", "web_fetch", "web_search",
+    "plazcode_screenshot", "attach_feedback", "tab_read", "tab_click", "tab_type",
+    "tab_scroll", "plazcode_debug", "plazcode_agent",
+  ];
+
+  function desktopBrowserTools(bridgeNames) {
+    const native = bridgeNames instanceof Set ? bridgeNames : new Set(bridgeNames || []);
+    const rows = [];
+    const seen = new Set();
+    const add = (items, source) => {
+      for (const item of items || []) {
+        const name = typeof item === "string" ? item : item && item.name;
+        if (!name || native.has(name) || seen.has(name)) continue;
+        seen.add(name);
+        rows.push({ name, source });
+      }
+    };
+
+    add(A.toolList, "PlazCode");
+    if (activeEngine() === "local") {
+      if (typeof AgentScriptSkills !== "undefined") add(AgentScriptSkills.SKILL_OPS, "PlazCode / AgentScript");
+    } else {
+      if (typeof RSAnim !== "undefined") add(RSAnim.ANIM_COMMANDS, "PlazCode / Motion");
+      if (typeof RobloxScriptSkills !== "undefined") add(RobloxScriptSkills.SKILL_COMMANDS, "PlazCode / Skills");
+    }
+    add(DESKTOP_UTILITY_TOOLS, "PlazCode");
+    return rows;
+  }
+
+  function syncDesktopToolSnapshot() {
+    const native = new Set(A._bridgeToolNames || []);
+    bg({ type: "desktop_tools_snapshot", tools: desktopBrowserTools(native) }).catch(() => {});
+  }
+
   async function ensureTools(force) {
     if (!force && A.toolList.length && Date.now() - A.toolsAt < TOOLS_TTL_MS) {
       diag("tools.cached", { age: Date.now() - A.toolsAt, n: A.toolList.length });
+      syncDesktopToolSnapshot();
       return A.toolList;
     }
     const t0 = Date.now();
@@ -1684,7 +1720,9 @@
     }
     diag("tools.fetched", { ms: Date.now() - t0, n: (r && r.tools && r.tools.length) || 0 });
     if (r && r.tools && r.tools.length) {
-      const tools = r.tools.filter((t) => !isBlockedTool(t.name));
+      const bridgeTools = r.tools.filter((t) => !isBlockedTool(t.name));
+      A._bridgeToolNames = bridgeTools.map((tool) => tool.name);
+      const tools = bridgeTools.slice();
       const names = new Set(tools.map((tool) => tool.name));
       for (const tool of importedRobloxTools()) if (!names.has(tool.name)) {
         tools.push(tool);
@@ -1693,6 +1731,7 @@
       A.toolList = tools;
       A.toolNames = new Set(tools.map((t) => t.name));
       A.toolsAt = Date.now();
+      syncDesktopToolSnapshot();
     }
     return A.toolList;
   }
@@ -6552,12 +6591,30 @@ function renderCards(panel) {
           }
           const x = document.createElement("button");
           x.type = "button"; x.className = "rs-media-chip-x"; x.textContent = "✕";
-          x.addEventListener("click", (e) => { e.stopPropagation(); A.mediaFiles.splice(i, 1); renderMedia(); });
+          x.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const removed = A.mediaFiles.splice(i, 1);
+            if (removed.length) releaseMediaUrl(removed[0]);
+            renderMedia();
+          });
           chip.appendChild(x);
           list.appendChild(chip);
         });
         if (countEl) countEl.textContent = A.mediaFiles.length ? A.mediaFiles.length + " media staged" : "No media staged";
         if (mediaBtn) mediaBtn.textContent = A.mediaFiles.length ? "📎" + A.mediaFiles.length : "📎";
+      }
+
+      function releaseMediaUrl(media) {
+        try {
+          if (media && typeof media.url === "string" && media.url.startsWith("blob:")) {
+            URL.revokeObjectURL(media.url);
+          }
+        } catch {}
+      }
+
+      function clearMediaFiles() {
+        for (const media of A.mediaFiles) releaseMediaUrl(media);
+        A.mediaFiles.length = 0;
       }
 
       function addFiles(files) {
@@ -6682,7 +6739,7 @@ function renderCards(panel) {
         qosBtns.forEach((o) => o.classList.toggle("on", o === b));
       }));
       const clearBtn = root.querySelector("#rs-media-clear");
-      if (clearBtn) clearBtn.addEventListener("click", (e) => { e.stopPropagation(); A.mediaFiles.length = 0; renderMedia(); });
+      if (clearBtn) clearBtn.addEventListener("click", (e) => { e.stopPropagation(); clearMediaFiles(); renderMedia(); });
       if (drop) {
         drop.addEventListener("click", () => { if (fileInput) fileInput.click(); });
         drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("rs-media-over"); });
@@ -6706,6 +6763,7 @@ function renderCards(panel) {
         for (const it of items) { if (it.kind === "file") { const f = it.getAsFile(); if (f) files.push(f); } }
         if (files.length) addFiles(files);
       });
+      window.addEventListener("pagehide", clearMediaFiles, { once: true });
       renderMedia();
     }
 
@@ -7388,14 +7446,16 @@ function renderCards(panel) {
       }
     }
 
-    let lastBarLayoutAt = 0;
-    function placeBar(frameTime = 0) {
-      barRaf = requestAnimationFrame(placeBar);
+    let barTimer = null;
+    function placeBar() {
+      if (barTimer) clearTimeout(barTimer);
+      const nextDelay = document.hidden ? 1000 : (A.running || A.starting || A.injecting ? 90 : 180);
+      barTimer = setTimeout(() => {
+        barTimer = null;
+        if (document.hidden) placeBar();
+        else barRaf = requestAnimationFrame(() => { barRaf = null; placeBar(); });
+      }, nextDelay);
       if (!bar) return;
-      const layoutNow = frameTime || performance.now();
-      const layoutMinMs = document.hidden ? 1000 : 120;
-      if (layoutNow - lastBarLayoutAt < layoutMinMs) return;
-      lastBarLayoutAt = layoutNow;
 
       // Self-heal: a SPA navigation or a full re-render on the host (seen on Arena
       // when the message frame jumps/teleports to the bottom) can detach our whole
@@ -8315,14 +8375,14 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
   // tab, so when hidden we fall back to a timer (throttled, but it runs).
   let sweepScheduled = false;
   let lastSweepAt = 0;
-  const SWEEP_MIN_MS = P.id === "deepseek" ? 250 : 150;
+  const SWEEP_ACTIVE_MS = P.id === "deepseek" ? 250 : 220;
+  const SWEEP_IDLE_MS = P.id === "chatgpt" ? 900 : (P.id === "deepseek" ? 650 : 600);
   function scheduleSweep() {
     if (sweepScheduled) return;
     sweepScheduled = true;
     const run = () => {
-      const minMs = P.id === "chatgpt"
-        ? (A.running || A.starting || A.injecting ? 300 : 900)
-        : SWEEP_MIN_MS;
+      const busy = A.running || A.starting || A.injecting || P.isGenerating();
+      const minMs = busy ? SWEEP_ACTIVE_MS : SWEEP_IDLE_MS;
       const wait = minMs - (Date.now() - lastSweepAt);
       if (wait > 0) { setTimeout(run, wait); return; }
       sweepScheduled = false;
@@ -8404,7 +8464,7 @@ statusTimer = rsInterval(() => bg({ type: "status" }).then(onStatus), 5000);
     // Belt-and-braces: a low-frequency sweep regardless of tab visibility or
     // mutation timing, so camouflage always converges. Worker-backed so it also
     // converges while the user is on another site (background mode).
-    rsInterval(scheduleSweep, 1500);
+    rsInterval(scheduleSweep, 3000);
   // When the user returns to the tab, immediately refresh camouflage/state.
   document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleSweep(); });
 
