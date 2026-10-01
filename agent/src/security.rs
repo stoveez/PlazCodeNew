@@ -20,7 +20,7 @@ pub fn allowed_origin(headers: &HeaderMap) -> bool {
         None => true,
         Some(value) => {
             let Ok(origin) = value.to_str() else { return false; };
-            if matches!(origin, "http://127.0.0.1:3000" | "http://localhost:3000") {
+            if matches!(origin, "http://127.0.0.1:3000" | "http://localhost:3000" | "null") {
                 return true;
             }
             origin.strip_prefix("chrome-extension://")
