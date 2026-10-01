@@ -7,7 +7,7 @@ const baseline = {
   "core/config.js": "51a52f333caab9755fcbdb31809f66a891e5e77a",
   "core/headless-builder.js": "b343a897a17fc05d79ab469aeea55c8abaa8c4e5",
   "core/luau-knowledge.js": "234c1ca2155d3ef5f38927d85893b70fd6bde6e6",
-  "core/main.js": "c6f3bb7ef3c36e001ca93c967f81d025e419c7d4",
+  "core/main.js": "61cb220aabf19d249876d14b57c1420147c354e3",
   "core/motion-interchange.js": "038afa13a5b59c030a809abf7d617a36f2fae82d",
   "core/motion-preview.js": "ae0ab0526fbc762dfbf7cae9c248239e217e7a2f",
   "core/motion-tools.js": "8ac81b4a4a9f634fef9285aeee06db4a15af578e",
@@ -70,7 +70,7 @@ for (const path of requiredProviders) {
 }
 
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
-if (manifest.version !== "1.18.55") throw new Error("Expected extension version 1.18.55");
+if (manifest.version !== "1.18.56") throw new Error("Expected extension version 1.18.56");
 for (const entry of manifest.content_scripts || []) {
   for (const path of entry.js || []) {
     if (!fs.existsSync(path)) throw new Error("Manifest references missing JS: " + path);
@@ -84,12 +84,37 @@ const background = fs.readFileSync("background.js", "utf8");
 for (const token of [
   "DESKTOP_PREF_KEYS",
   "/api/preferences",
+  "_plazcodePersisted",
+  "initialDesktopPreferencesSync",
   "pullDesktopPreferences",
   "pushDesktopPreferences",
+  "desktop_tools_snapshot",
+  "/api/tools/browser",
   "chrome.runtime.onMessage.addListener",
   "sendResponse"
 ]) {
   if (!background.includes(token)) throw new Error("Desktop relay contract missing: " + token);
+}
+
+const main = fs.readFileSync("core/main.js", "utf8");
+for (const token of [
+  "desktopBrowserTools",
+  "syncDesktopToolSnapshot",
+  "SWEEP_ACTIVE_MS",
+  "SWEEP_IDLE_MS",
+  "releaseMediaUrl",
+  "clearMediaFiles",
+  "nextDelay = document.hidden ? 1000",
+  "e.t - lastDiagDomAt >= 2000"
+]) {
+  if (!main.includes(token)) throw new Error("Long-chat/tool catalog regression guard missing: " + token);
+}
+
+if (main.includes("barRaf = requestAnimationFrame(placeBar);")) {
+  throw new Error("High-frequency perpetual placeBar requestAnimationFrame loop returned");
+}
+if (main.includes("rsInterval(scheduleSweep, 1500)")) {
+  throw new Error("Old high-frequency fallback sweep returned");
 }
 
 const providerNames = requiredProviders.map((p) => p.split("/").pop());
