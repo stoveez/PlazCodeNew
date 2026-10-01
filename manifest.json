@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PlazCode \u00d7 Roblox Studio & AgentScript",
-  "version": "1.18.54",
+  "version": "1.18.55",
   "minimum_chrome_version": "111",
   "description": "PlazCode connects supported AI chats to Roblox Studio and local AgentScript with animation, VFX, Luau knowledge, web research, and project tools.",
   "permissions": [
@@ -88,7 +88,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "PlazCode \u2014 RS/AS \u2014 1.18.54",
+    "default_title": "PlazCode \u2014 RS/AS \u2014 1.18.55",
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",
