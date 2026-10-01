@@ -62,3 +62,26 @@ jobs:
       - name: Cargo test
         shell: pwsh
         run: cargo test --locked --manifest-path agent/Cargo.toml
+      - name: Build release agent
+        shell: pwsh
+        run: cargo build --release --locked --manifest-path agent/Cargo.toml
+      - name: Package PlazCode share zip
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP "PlazCode"
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          Get-ChildItem -Force | Where-Object { $_.Name -notin @(".git", "logs") } | ForEach-Object {
+            Copy-Item $_.FullName -Destination $stage -Recurse -Force
+          }
+          if (Test-Path (Join-Path $stage "agent\target")) {
+            Remove-Item (Join-Path $stage "agent\target") -Recurse -Force
+          }
+          Copy-Item "agent\target\release\plazcode-agent.exe" (Join-Path $stage "plazcode-agent.exe") -Force
+          tar -a -c -f "PlazCode-1.18.54-SHARE.zip" -C $env:RUNNER_TEMP PlazCode
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlazCode-1.18.54-SHARE
+          path: PlazCode-1.18.54-SHARE.zip
+          if-no-files-found: error
+          retention-days: 14
