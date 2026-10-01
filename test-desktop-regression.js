@@ -303,6 +303,19 @@ if (!cargoToml.includes('wry = { version = "0.57.0"') || !cargoToml.includes('ta
 }
 if (cargoToml.includes("eframe =")) throw new Error("Legacy egui renderer dependency returned");
 
+for (const token of [
+  ".shell{min-width:0;min-height:0;",
+  ".content{flex:1 1 auto;min-height:0;",
+  "overflow-y:auto",
+  "scrollbar-gutter:stable",
+  'document.querySelector(".content")',
+  "Content.scrollTop = 0"
+]) {
+  if (!desktopHtml.includes(token)) {
+    throw new Error("Desktop scroll contract missing: " + token);
+  }
+}
+
 const guiRs = fs.readFileSync("agent/src/gui.rs", "utf8");
 if (!guiRs.includes('.with_custom_protocol("plazcode".to_string()')) {
   throw new Error("Desktop WebView custom PlazCode protocol is missing");
