@@ -872,6 +872,60 @@ fn reasoning_label(value: &str) -> &'static str {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(rows: &[ToolDisplay]) -> Vec<(String, String)> {
+        rows.iter().map(|row| (row.name.clone(), row.source.clone())).collect()
+    }
+
+    #[test]
+    fn tool_catalog_merges_all_sources() {
+        let shared = UiShared::new(Arc::new(AtomicBool::new(false)));
+
+        shared.set_roblox_tools(
+            &[serde_json::json!({"name":"execute_luau"})],
+            true,
+        );
+        shared.set_local_tools(
+            &[serde_json::json!({"name":"read_file"})],
+            true,
+        );
+        shared.set_addon_tools(
+            &[serde_json::json!({"name":"memory__search","server":"memory"})],
+            Vec::new(),
+        );
+        shared.set_browser_tools(
+            &[
+                serde_json::json!({"name":"web_search","source":"PlazCode"}),
+                serde_json::json!({"name":"animation_create","source":"PlazCode / Motion"}),
+            ],
+        );
+
+        let rows = shared.tools.lock().expect("tool lock").clone();
+        let names = names(&rows);
+        assert!(names.contains(&("execute_luau".to_string(), "Roblox Studio".to_string())));
+        assert!(names.contains(&("read_file".to_string(), "AgentScript".to_string())));
+        assert!(names.contains(&("memory__search".to_string(), "MCP / memory".to_string())));
+        assert!(names.contains(&("web_search".to_string(), "PlazCode".to_string())));
+        assert!(names.contains(&("animation_create".to_string(), "PlazCode / Motion".to_string())));
+    }
+
+    #[test]
+    fn browser_tool_refresh_replaces_only_browser_rows() {
+        let shared = UiShared::new(Arc::new(AtomicBool::new(false)));
+        shared.set_local_tools(&[serde_json::json!({"name":"tree"})], true);
+        shared.set_browser_tools(&[serde_json::json!({"name":"web_search","source":"PlazCode"})]);
+        shared.set_browser_tools(&[serde_json::json!({"name":"web_fetch","source":"PlazCode"})]);
+
+        let rows = shared.tools.lock().expect("tool lock").clone();
+        assert!(rows.iter().any(|row| row.name == "tree" && row.source == "AgentScript"));
+        assert!(rows.iter().any(|row| row.name == "web_fetch" && row.source == "PlazCode"));
+        assert!(!rows.iter().any(|row| row.name == "web_search" && row.source == "PlazCode"));
+    }
+}
+
 fn window_icon() -> Arc<egui::IconData> {
     let width = 64usize;
     let height = 64usize;
