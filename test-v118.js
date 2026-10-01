@@ -138,7 +138,7 @@ ok("capture_tab still exists for tab targets", bgSrc.includes('case "capture_tab
 ok("main has one shared capture routine", (mainSrc.match(/async function captureShots\(target\)/g) || []).length === 1);
 ok("plazcode_screenshot uses the shared routine", mainSrc.includes('name === "plazcode_screenshot"') && /captureShots\(target\)/.test(mainSrc));
 ok("captureShots is the only screen_capture caller", (mainSrc.match(/tryMcp\("screen_capture"/g) || []).length === 1);
-ok("recent captures are remembered", mainSrc.includes("function rememberImages(") && mainSrc.includes("RECENT_IMAGES_MAX"));
+ok("recent captures are remembered", mainSrc.includes("function rememberImages(") && mainSrc.includes("A.recentImages.length > 8"));
 ok("image payloads become reusable blobs", mainSrc.includes("function imageToBlob(") && mainSrc.includes("function imageToPngBlob("));
 ok("clipboard write is guarded and reported", mainSrc.includes("function copyImageToClipboard(") && mainSrc.includes("ClipboardItem"));
 ok("attach_feedback is dispatched", mainSrc.includes('name === "attach_feedback"'));
@@ -208,7 +208,13 @@ function makeWorker(fetchImpl, bridgeImpl) {
   const sandbox = {
     chrome: chromeStub,
     console: { log: () => {}, warn: () => {}, error: () => {}, info: () => {} },
-    fetch: fetchImpl || (async () => { throw new Error("network disabled in tests"); }),
+    fetch: async (url, opts) => {
+      if (String(url).includes("127.0.0.1:3000/api/pair")) {
+        return httpResponse(200, JSON.stringify({ key: "a".repeat(64) }), { "content-type": "application/json" });
+      }
+      const impl = fetchImpl || (async () => { throw new Error("network disabled in tests"); });
+      return impl(url, opts);
+    },
     WebSocket: FakeWS,
     setTimeout, clearTimeout, setInterval: () => 1, clearInterval: () => {},
     URL, AbortController, TextDecoder, TextEncoder, atob, btoa, navigator: { userAgent: "node" },
