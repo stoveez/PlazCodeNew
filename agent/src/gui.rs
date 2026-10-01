@@ -337,37 +337,7 @@ impl AgentApp {
 
     fn paint_background(ui: &egui::Ui) {
         let rect = ui.max_rect();
-        let painter = ui.painter();
-        let right = egui::pos2(rect.right() - 45.0, rect.top() + 95.0);
-        let left = egui::pos2(rect.left() + 35.0, rect.bottom() - 20.0);
-
-        for (radius, alpha) in [(235.0, 4u8), (170.0, 6u8), (115.0, 8u8), (65.0, 10u8)] {
-            painter.circle_filled(
-                right,
-                radius,
-                egui::Color32::from_rgba_unmultiplied(255, 128, 24, alpha),
-            );
-        }
-        for (radius, alpha) in [(190.0, 3u8), (120.0, 5u8), (65.0, 7u8)] {
-            painter.circle_filled(
-                left,
-                radius,
-                egui::Color32::from_rgba_unmultiplied(255, 110, 20, alpha),
-            );
-        }
-
-        for offset in [0.0, 28.0, 56.0] {
-            painter.line_segment(
-                [
-                    egui::pos2(rect.right() - 370.0 + offset, rect.top()),
-                    egui::pos2(rect.right() - 510.0 + offset, rect.top() + 220.0),
-                ],
-                egui::Stroke::new(
-                    1.0,
-                    egui::Color32::from_rgba_unmultiplied(255, 145, 38, 28),
-                ),
-            );
-        }
+        ui.painter().rect_filled(rect, egui::Rounding::ZERO, BG);
     }
 
     fn paint_logo(ui: &egui::Ui, rect: egui::Rect, color: egui::Color32) {
@@ -549,6 +519,7 @@ impl AgentApp {
                     ui.vertical(|ui| {
                         ui.add_space(3.0);
                         ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label(egui::RichText::new("Plaz").size(17.5).strong().color(FG));
                             ui.label(egui::RichText::new("Code").size(17.5).strong().color(ACCENT_HI));
                         });
@@ -659,6 +630,7 @@ impl AgentApp {
                     ui.add_space(3.0);
                     ui.label(egui::RichText::new("Welcome to").size(if wide { 21.0 } else { 18.0 }).strong().color(FG));
                     ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
                         ui.label(egui::RichText::new("Plaz").size(if wide { 38.0 } else { 32.0 }).strong().color(FG));
                         ui.label(egui::RichText::new("Code").size(if wide { 38.0 } else { 32.0 }).strong().color(ACCENT_HI));
                     });
