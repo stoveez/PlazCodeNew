@@ -695,6 +695,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/status", get(status_handler))
         .route("/desktop", get(desktop_handler))
         .route("/api/desktop/state", get(desktop_state_handler))
+        .route("/api/desktop/preferences", post(desktop_preferences_handler))
         .route("/api/desktop/restart", post(desktop_restart_handler))
         .route("/api/desktop/clear-logs", post(desktop_clear_logs_handler))
         .route("/api/show", post(show_handler))
@@ -800,6 +801,19 @@ async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoRespon
         "fatal": fatal,
         "preferences": state.preferences.snapshot(),
     }))
+}
+
+async fn desktop_preferences_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    match state.preferences.patch(req) {
+        Ok(prefs) => {
+            state.workspace.set_full_access(prefs.perm_mode == "full");
+            Json(serde_json::json!({"ok": true, "preferences": prefs})).into_response()
+        }
+        Err(error) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+        ).into_response(),
+    }
 }
 
 async fn desktop_restart_handler(State(state): State<AppState>) -> impl IntoResponse {
