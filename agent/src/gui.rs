@@ -313,30 +313,206 @@ impl AgentApp {
         ui.add_space(15.0);
     }
 
-    fn nav_button(&mut self, ui: &mut egui::Ui, page: Page, icon: &str, label: &str) {
-        let selected = self.page == page;
-        let text = egui::RichText::new(format!("{icon}   {label}"))
-            .size(12.5)
-            .strong()
-            .color(if selected { FG } else { DIM });
-        let fill = if selected {
-            egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 34)
+    fn glow_outline(ui: &egui::Ui, rect: egui::Rect, color: egui::Color32, strong: bool) {
+        let levels = if strong {
+            [(1.0, 115u8), (3.0, 52u8), (7.0, 20u8)]
         } else {
-            egui::Color32::TRANSPARENT
+            [(1.0, 70u8), (3.0, 28u8), (6.0, 10u8)]
         };
-        let stroke = if selected {
-            egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.8))
-        } else {
-            egui::Stroke::NONE
-        };
+        for (expand, alpha) in levels {
+            ui.painter().rect_stroke(
+                rect.expand(expand),
+                egui::Rounding::same(12.0),
+                egui::Stroke::new(
+                    1.0,
+                    egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha),
+                ),
+            );
+        }
+    }
 
-        if ui.add(
-            egui::Button::new(text)
-                .fill(fill)
-                .stroke(stroke)
-                .rounding(egui::Rounding::same(9.0))
-                .min_size(egui::vec2(ui.available_width(), 39.0))
-        ).clicked() {
+    fn paint_background(ui: &egui::Ui) {
+        let rect = ui.max_rect();
+        let painter = ui.painter();
+        let right = egui::pos2(rect.right() - 45.0, rect.top() + 95.0);
+        let left = egui::pos2(rect.left() + 35.0, rect.bottom() - 20.0);
+
+        for (radius, alpha) in [(235.0, 4u8), (170.0, 6u8), (115.0, 8u8), (65.0, 10u8)] {
+            painter.circle_filled(
+                right,
+                radius,
+                egui::Color32::from_rgba_unmultiplied(255, 128, 24, alpha),
+            );
+        }
+        for (radius, alpha) in [(190.0, 3u8), (120.0, 5u8), (65.0, 7u8)] {
+            painter.circle_filled(
+                left,
+                radius,
+                egui::Color32::from_rgba_unmultiplied(255, 110, 20, alpha),
+            );
+        }
+
+        for offset in [0.0, 28.0, 56.0] {
+            painter.line_segment(
+                [
+                    egui::pos2(rect.right() - 370.0 + offset, rect.top()),
+                    egui::pos2(rect.right() - 510.0 + offset, rect.top() + 220.0),
+                ],
+                egui::Stroke::new(
+                    1.0,
+                    egui::Color32::from_rgba_unmultiplied(255, 145, 38, 28),
+                ),
+            );
+        }
+    }
+
+    fn paint_logo(ui: &egui::Ui, rect: egui::Rect, color: egui::Color32) {
+        let painter = ui.painter();
+        let w = rect.width();
+        let h = rect.height();
+        let stroke = egui::Stroke::new((w * 0.07).max(4.0), color);
+        let x = rect.left();
+        let y = rect.top();
+
+        painter.line_segment(
+            [egui::pos2(x + w * 0.23, y + h * 0.18), egui::pos2(x + w * 0.23, y + h * 0.62)],
+            stroke,
+        );
+        painter.line_segment(
+            [egui::pos2(x + w * 0.23, y + h * 0.18), egui::pos2(x + w * 0.58, y + h * 0.18)],
+            stroke,
+        );
+        painter.line_segment(
+            [egui::pos2(x + w * 0.23, y + h * 0.42), egui::pos2(x + w * 0.56, y + h * 0.42)],
+            stroke,
+        );
+        painter.circle_stroke(
+            egui::pos2(x + w * 0.57, y + h * 0.30),
+            w * 0.15,
+            stroke,
+        );
+
+        let lower = egui::Stroke::new((w * 0.055).max(3.0), color);
+        painter.line_segment(
+            [egui::pos2(x + w * 0.27, y + h * 0.68), egui::pos2(x + w * 0.15, y + h * 0.91)],
+            lower,
+        );
+        painter.line_segment(
+            [egui::pos2(x + w * 0.42, y + h * 0.68), egui::pos2(x + w * 0.30, y + h * 0.91)],
+            lower,
+        );
+    }
+
+    fn paint_nav_icon(ui: &egui::Ui, rect: egui::Rect, page: Page, color: egui::Color32) {
+        let painter = ui.painter();
+        let c = rect.center();
+        let s = rect.width().min(rect.height()) * 0.28;
+        let stroke = egui::Stroke::new(1.8, color);
+
+        match page {
+            Page::Home => {
+                painter.line_segment([egui::pos2(c.x - s, c.y), egui::pos2(c.x, c.y - s)], stroke);
+                painter.line_segment([egui::pos2(c.x, c.y - s), egui::pos2(c.x + s, c.y)], stroke);
+                painter.rect_stroke(
+                    egui::Rect::from_min_max(
+                        egui::pos2(c.x - s * 0.72, c.y),
+                        egui::pos2(c.x + s * 0.72, c.y + s * 0.78),
+                    ),
+                    egui::Rounding::same(2.0),
+                    stroke,
+                );
+            }
+            Page::Tools => {
+                painter.line_segment(
+                    [egui::pos2(c.x - s * 0.82, c.y + s * 0.82), egui::pos2(c.x + s * 0.72, c.y - s * 0.72)],
+                    stroke,
+                );
+                painter.circle_stroke(egui::pos2(c.x + s * 0.55, c.y - s * 0.55), s * 0.43, stroke);
+                painter.circle_filled(egui::pos2(c.x - s * 0.72, c.y + s * 0.72), 2.4, color);
+            }
+            Page::Mcp => {
+                for off in [-0.55f32, 0.0, 0.55] {
+                    let yy = c.y + off * s;
+                    painter.line_segment([egui::pos2(c.x - s, yy), egui::pos2(c.x + s, yy)], stroke);
+                    painter.circle_filled(egui::pos2(c.x - s, yy), 2.0, color);
+                    painter.circle_filled(egui::pos2(c.x + s, yy), 2.0, color);
+                }
+            }
+            Page::Console => {
+                painter.rect_stroke(rect.shrink(4.0), egui::Rounding::same(3.0), stroke);
+                painter.line_segment(
+                    [egui::pos2(c.x - s * 0.55, c.y - s * 0.35), egui::pos2(c.x - s * 0.05, c.y)],
+                    stroke,
+                );
+                painter.line_segment(
+                    [egui::pos2(c.x - s * 0.05, c.y), egui::pos2(c.x - s * 0.55, c.y + s * 0.35)],
+                    stroke,
+                );
+                painter.line_segment(
+                    [egui::pos2(c.x + s * 0.10, c.y + s * 0.42), egui::pos2(c.x + s * 0.65, c.y + s * 0.42)],
+                    stroke,
+                );
+            }
+            Page::Settings => {
+                painter.circle_stroke(c, s * 0.60, stroke);
+                painter.circle_stroke(c, s * 0.22, stroke);
+                for angle in [0.0f32, 1.5708, 3.14159, 4.71239] {
+                    let dx = angle.cos() * s;
+                    let dy = angle.sin() * s;
+                    painter.line_segment(
+                        [egui::pos2(c.x + dx * 0.67, c.y + dy * 0.67), egui::pos2(c.x + dx, c.y + dy)],
+                        stroke,
+                    );
+                }
+            }
+        }
+    }
+
+    fn nav_button(&mut self, ui: &mut egui::Ui, page: Page, label: &str) {
+        let selected = self.page == page;
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), 45.0),
+            egui::Sense::click(),
+        );
+        let hovered = response.hovered();
+
+        if selected || hovered {
+            ui.painter().rect_filled(
+                rect,
+                egui::Rounding::same(9.0),
+                if selected {
+                    egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 34)
+                } else {
+                    egui::Color32::from_rgba_unmultiplied(255, 255, 255, 8)
+                },
+            );
+        }
+        if selected {
+            ui.painter().rect_filled(
+                egui::Rect::from_min_max(
+                    egui::pos2(rect.left(), rect.top() + 4.0),
+                    egui::pos2(rect.left() + 3.0, rect.bottom() - 4.0),
+                ),
+                egui::Rounding::same(2.0),
+                ACCENT,
+            );
+            Self::glow_outline(ui, rect, ACCENT, true);
+        }
+
+        let icon_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + 24.0, rect.center().y),
+            egui::vec2(25.0, 25.0),
+        );
+        Self::paint_nav_icon(ui, icon_rect, page, if selected { ACCENT_HI } else { DIM });
+        ui.painter().text(
+            egui::pos2(rect.left() + 47.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            label,
+            egui::FontId::proportional(12.5),
+            if selected { FG } else { DIM },
+        );
+
+        if response.clicked() {
             self.page = page;
         }
     }
@@ -374,11 +550,11 @@ impl AgentApp {
                 });
 
                 ui.add_space(22.0);
-                self.nav_button(ui, Page::Home, "⌂", "Home");
-                self.nav_button(ui, Page::Tools, "⌘", "Tools");
-                self.nav_button(ui, Page::Mcp, "◫", "MCP Servers");
-                self.nav_button(ui, Page::Console, ">_", "Terminal");
-                self.nav_button(ui, Page::Settings, "⚙", "Settings");
+                self.nav_button(ui, Page::Home, "Home");
+                self.nav_button(ui, Page::Tools, "Tools");
+                self.nav_button(ui, Page::Mcp, "MCP Servers");
+                self.nav_button(ui, Page::Console, "Terminal");
+                self.nav_button(ui, Page::Settings, "Settings");
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     let studio = self.shared.studio_running.load(Ordering::Relaxed);
