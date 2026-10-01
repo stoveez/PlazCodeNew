@@ -56,6 +56,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Refresh WebView lockfile
+        shell: pwsh
+        run: cargo generate-lockfile --manifest-path agent/Cargo.toml
       - name: Cargo check
         shell: pwsh
         run: cargo check --locked --manifest-path agent/Cargo.toml
