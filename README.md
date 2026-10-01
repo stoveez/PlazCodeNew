@@ -39,7 +39,7 @@ Large `execute_luau` scripts are auto-chunked around 24 KB so Studio's parser ne
 
 ## Agent
 
-- Native crate: `agent/` (`plazcode-agent` 1.18.61). Desktop control center, MCP helper spawn, outbound WS channel so ping/status keep flowing during a 20 s `execute_luau`.
+- Native crate: `agent/` (`plazcode-agent` 1.18.62). Desktop control center, MCP helper spawn, outbound WS channel so ping/status keep flowing during a 20 s `execute_luau`.
 - Service worker skips stale-socket reconnect and MCP heal while a `call_tool` is in flight (the 25 s stale window used to kill long tools).
 - 30 Studio skills, a 24-command animation suite, AgentScript file/terminal tools.
 - Personas (Builder / Scripter / Animator / Fixer), Extra Thinking, Forge GUI, Image → Model, auto-fix playtest errors.
