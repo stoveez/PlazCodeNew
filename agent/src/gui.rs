@@ -628,13 +628,7 @@ impl AgentApp {
                         ui.label(egui::RichText::new("Plaz").size(if wide { 38.0 } else { 32.0 }).strong().color(FG));
                         ui.label(egui::RichText::new("Code").size(if wide { 38.0 } else { 32.0 }).strong().color(ACCENT_HI));
                     });
-                    ui.add_space(1.0);
-                    ui.label(
-                        egui::RichText::new("Your browser-first AI development control center for Roblox.")
-                            .size(11.0)
-                            .color(DIM),
-                    );
-                    ui.add_space(10.0);
+                    ui.add_space(8.0);
                     ui.horizontal_wrapped(|ui| {
                         badge(ui, "Browser AI", if self.shared.extension_recent() { "connected" } else { "waiting" });
                         badge(ui, "Bridge", "127.0.0.1");
