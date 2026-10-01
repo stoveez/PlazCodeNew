@@ -120,6 +120,9 @@ impl PreferencesStore {
         }
         let tmp = self.path.with_extension("json.tmp");
         std::fs::write(&tmp, serde_json::to_vec_pretty(prefs)?)?;
+        if self.path.exists() {
+            std::fs::remove_file(&self.path)?;
+        }
         std::fs::rename(&tmp, &self.path)?;
         Ok(())
     }
