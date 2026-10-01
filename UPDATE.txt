@@ -1,31 +1,44 @@
-PlazCode 1.18.53
+PlazCode 1.18.54
 
 Changes:
-- Automatically pair the extension with the matching local agent at startup and reconnect. No key copy/paste is needed.
-- Automatically refresh an outdated key after an HTTP authentication failure.
-- Add Plan mode beside Extra Thinking in the Chrome extension popup.
-- Add Default, Low, Medium, High and Max reasoning choices. These synchronize with the existing on-page settings and apply on the next turn. A reasoning preference does not guarantee a site's native model offers the same setting.
-- Both extension and rebuilt agent report 1.18.53.
+- Turn the native PlazCode agent window into a desktop control center with Home, Tools, MCP Servers, Console and Settings pages.
+- Keep the existing browser extension and every provider adapter as the AI-facing layer. The desktop app does not replace or rewrite provider DOM integrations.
+- Synchronize desktop settings with the extension through the existing authenticated 127.0.0.1 bridge. Existing extension settings are preserved on the first desktop sync.
+- Mirror Roblox/AgentScript engine, Fast/Balanced/Thorough work mode, Sandbox/Ask/Full permissions, reasoning level, Extra Thinking, Plan Mode, Forge UI, Auto Fix, Background Mode and Sounds in the desktop app.
+- Add a live desktop tool browser and MCP server catalog.
+- Add optional MCP catalog entries for Blender, Context7, Fetch, Git, Memory and Sequential Thinking. Roblox Studio remains the protected primary MCP server.
+- Add authenticated custom MCP add/remove support to the native bridge. Add-on tool names are isolated with a server prefix so they cannot collide with Roblox Studio tools.
+- Keep the existing extension/background message contract intact. Every existing provider/core JS file is hash-protected by the desktop regression suite.
+- Restore the source layout under core/, providers/, agent/ and ui/ and remove the accidental flattened source duplicates.
+- Both extension and rebuilt agent report 1.18.54.
+
+Regression validation:
+- JavaScript syntax check runs for background.js, popup.js and every core/provider JavaScript file.
+- Provider/core integrity guard verifies the existing browser provider code was not changed by the desktop work.
+- Existing parser, ChatGPT, Claude, skills, animation and version regression suites run in GitHub Actions.
+- Rust cargo check and cargo test run on Windows.
+- The shipping workflow builds the Windows release agent and creates PlazCode-1.18.54-SHARE.zip.
+- Notion remains the known live-site exception from the 1.18.53 baseline. Its provider adapter is preserved and hash-protected; this release does not claim Notion is fixed.
+- Live browser smoke testing is still required before promoting the draft build to final because GitHub Actions cannot drive authenticated AI websites in your Chrome profile.
 
 Install:
-1. Close the old agent.
-2. Extract this full package and replace the previous package files.
-3. Reload the extension in chrome://extensions.
-4. Start the new plazcode-agent.exe and refresh the AI site. Pairing happens automatically.
-5. Click the PlazCode extension icon to change Plan mode or Reasoning level.
+1. Close the old PlazCode agent.
+2. Keep plazcode-agent.old.exe as your rollback copy.
+3. Extract PlazCode-1.18.54-SHARE.zip and replace the previous PlazCode folder.
+4. Reload the unpacked extension in chrome://extensions.
+5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves old content scripts running.
+6. Start the new plazcode-agent.exe. The PlazCode desktop control center opens and automatic extension pairing continues to use the existing local pairing flow.
+7. If you enable an optional MCP server, make sure its launcher command (for example npx or uvx) is installed on the PC.
 
 Security boundary:
 - Command requests still require the local pairing key.
-- The pairing endpoint requires a POST with an extension-ID header and JSON content type. When a browser Origin is present, it must match that extension ID. Ordinary web origins, opaque/null origins, mismatched extension origins, and simple unauthenticated page requests are rejected.
-- Chrome extension service-worker requests may omit Origin; the custom-header requirement prevents ordinary no-cors webpage requests from using this path.
-- Automatic pairing trusts locally installed extensions and native local applications. It is not a security boundary against malicious software or other users already able to issue local requests. Manual pairing provided a stronger local-client boundary.
+- Desktop settings and MCP catalog endpoints use the same authenticated loopback API as the existing extension bridge.
+- The pairing endpoint keeps the existing extension-ID/content-type/origin validation.
+- Optional MCP servers are disabled until the user explicitly enables them.
+- The Roblox Studio MCP entry remains protected and cannot be removed through the catalog.
 - The key stays outside the release directory and is never included in the ZIP.
-- Blanket automatic file unblocking and automatic Python-process termination remain removed.
+- No additional Chrome permissions were added for the desktop app.
 
-Validation:
-- Windows x64 release built from source with Cargo --locked; no executable version-string patching.
-- JavaScript syntax checks passed.
-- Tests passed for automatic pairing, concurrent pairing, outdated-key recovery and invalid responses.
-- Rust tests passed for command authentication and rejection of ordinary web origins at pairing.
-- Popup DOM checks passed for loading, saving and synchronizing Plan mode and reasoning level.
-- Native Windows GUI/browser integration and Microsoft Defender scanning were not available here. This binary remains unsigned; no claim is made that a Defender detection is impossible or resolved.
+Distribution:
+- Distribute the complete PlazCode-1.18.54-SHARE.zip produced by the release workflow.
+- Do not distribute only changed files: the extension and agent versions must stay matched.
