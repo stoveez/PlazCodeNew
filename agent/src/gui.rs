@@ -293,8 +293,17 @@ pub fn run_gui(
 
     let proxy = event_loop.create_proxy();
     let ipc_proxy = proxy.clone();
+    let desktop_bytes = Arc::new(desktop_html.into_bytes());
+    let protocol_bytes = desktop_bytes.clone();
     let _webview = WebViewBuilder::new()
-        .with_html(desktop_html)
+        .with_custom_protocol("plazcode".to_string(), move |_webview_id, _request| {
+            http::Response::builder()
+                .header(http::header::CONTENT_TYPE, "text/html; charset=utf-8")
+                .header(http::header::CACHE_CONTROL, "no-store")
+                .body(std::borrow::Cow::Owned(protocol_bytes.as_ref().clone()))
+                .expect("valid PlazCode desktop response")
+        })
+        .with_url("plazcode://localhost/desktop")
         .with_ipc_handler(move |request| {
             let body = request.body().as_str();
             let event = match body {
