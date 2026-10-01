@@ -372,12 +372,79 @@ fn process_image(pid: u32) -> Option<String> {
 #[cfg(not(windows))]
 fn process_image(_pid: u32) -> Option<String> { None }
 
+fn is_plazcode_image(image: &str) -> bool {
+    matches!(
+        image.trim().to_ascii_lowercase().as_str(),
+        "plazcode.exe" | "plazcode-agent.exe"
+    )
+}
+
+#[cfg(windows)]
+fn plazcode_process_pids() -> Vec<u32> {
+    let mut pids = Vec::new();
+    for image in ["PlazCode.exe", "plazcode-agent.exe"] {
+        let Ok(out) = std::process::Command::new("tasklist")
+            .args(["/FI", &format!("IMAGENAME eq {image}"), "/FO", "CSV", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+        else {
+            continue;
+        };
+        let text = String::from_utf8_lossy(&out.stdout);
+        for line in text.lines() {
+            let mut fields = line.split(',');
+            let Some(name) = fields.next().map(|value| value.trim_matches('"')) else { continue; };
+            let Some(pid) = fields.next().and_then(|value| value.trim_matches('"').parse::<u32>().ok()) else { continue; };
+            if is_plazcode_image(name) {
+                pids.push(pid);
+            }
+        }
+    }
+    pids.sort_unstable();
+    pids.dedup();
+    pids
+}
+
+#[cfg(not(windows))]
+fn plazcode_process_pids() -> Vec<u32> { Vec::new() }
+
+#[cfg(windows)]
+fn cleanup_stale_plazcode_processes() -> anyhow::Result<usize> {
+    let current = std::process::id();
+    let mut killed = 0usize;
+
+    for pid in plazcode_process_pids() {
+        if pid == current {
+            continue;
+        }
+        tracing::info!("cleaning up stale PlazCode process pid={pid}");
+        let status = std::process::Command::new("taskkill")
+            .args(["/F", "/T", "/PID", &pid.to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+
+        if matches!(status, Ok(value) if value.success()) {
+            killed += 1;
+        }
+    }
+
+    if killed > 0 {
+        std::thread::sleep(Duration::from_millis(450));
+        tracing::info!("removed {killed} stale PlazCode process(es)");
+    }
+
+    Ok(killed)
+}
+
+#[cfg(not(windows))]
+fn cleanup_stale_plazcode_processes() -> anyhow::Result<usize> { Ok(0) }
+
 #[cfg(windows)]
 fn reclaim_port(port: u16) -> anyhow::Result<()> {
     let Some(pid) = port_owner_pid(port) else { return Ok(()); };
     if pid == std::process::id() { return Ok(()); }
     let image = process_image(pid).unwrap_or_default();
-    if image.contains("plazcode.exe") || image.contains("plazcode-agent") || image.contains("or-agent") || image.contains("totalscript-agent") || image.contains("robloxscript-agent") {
+    if is_plazcode_image(&image) {
         tracing::info!("killing stale PlazCode Agent (pid {pid}) on port {port}...");
         let _ = std::process::Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
@@ -435,6 +502,9 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
             running_version,
             env!("CARGO_PKG_VERSION")
         );
+        let shutdown_url = format!("http://{addr}/api/shutdown");
+        let _ = client.post(shutdown_url).bearer_auth(pairing_key).send().await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
         return false;
     }
 
@@ -462,6 +532,14 @@ mod startup_tests {
     fn older_version_is_replaced_instead_of_reused() {
         assert!(!should_reuse_running_version("1.18.58"));
         assert!(!should_reuse_running_version("0.0.1"));
+    }
+
+    #[test]
+    fn stale_cleanup_targets_only_plazcode_images() {
+        assert!(is_plazcode_image("PlazCode.exe"));
+        assert!(is_plazcode_image("plazcode-agent.exe"));
+        assert!(!is_plazcode_image("python.exe"));
+        assert!(!is_plazcode_image("RobloxStudioBeta.exe"));
     }
 }
 
@@ -494,9 +572,12 @@ async fn start() -> anyhow::Result<()> {
     let (result_tx, _) = broadcast::channel::<ExecResult>(128);
     let addr: SocketAddr = args.roblox_addr.parse().unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 3000)));
     anyhow::ensure!(addr.ip().is_loopback(), "The bridge must bind to a loopback address");
-    if !args.headless && focus_existing(addr, pairing_key.as_str()).await {
-        info!("existing PlazCode instance found — requested its desktop window and exiting launcher process");
-        return Ok(());
+    if !args.headless {
+        if focus_existing(addr, pairing_key.as_str()).await {
+            info!("existing same-version PlazCode instance found — requested its desktop window and exiting launcher process");
+            return Ok(());
+        }
+        cleanup_stale_plazcode_processes()?;
     }
     let ws_override = env_first(&["PLAZCODE_WORKSPACE_ROOT", "ROBLOXSCRIPT_WORKSPACE_ROOT"])
         .or_else(|| args.workspace.clone());
@@ -613,6 +694,7 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/disconnect", post(disconnect_handler))
         .route("/api/status", get(status_handler))
         .route("/api/show", post(show_handler))
+        .route("/api/shutdown", post(shutdown_handler))
         .route("/api/local-full", post(local_full_handler))
         .route("/api/preferences", get(preferences_get_handler).post(preferences_post_handler))
         .route("/api/tools/browser", post(browser_tools_handler))
@@ -686,6 +768,11 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
 async fn show_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.ui.request_show();
     Json(serde_json::json!({"ok": true, "visible": true}))
+}
+
+async fn shutdown_handler(State(state): State<AppState>) -> impl IntoResponse {
+    state.ui.request_quit();
+    Json(serde_json::json!({"ok": true, "shutting_down": true}))
 }
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
