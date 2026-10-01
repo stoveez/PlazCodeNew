@@ -876,14 +876,14 @@ impl AgentApp {
             all_tools.iter().filter(|tool| tool.source.starts_with("MCP / ")).count(),
         ];
 
-        Self::panel().show(ui, |ui| {
+        let search_shell = Self::panel().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut self.tool_filter)
                         .hint_text("Search tools or sources...")
-                        .desired_width(330.0)
+                        .desired_width(360.0)
                 );
-                ui.add_space(8.0);
+                ui.add_space(10.0);
 
                 for (idx, (label, count)) in [
                     ("All", counts[0]),
@@ -894,16 +894,25 @@ impl AgentApp {
                 ].iter().enumerate() {
                     let selected = self.tool_source == idx;
                     if ui.add(
-                        egui::Button::new(egui::RichText::new(format!("{label}  {count}")).size(9.5).strong().color(if selected { INK } else { DIM }))
-                            .fill(if selected { ACCENT } else { PANEL_HI })
-                            .stroke(egui::Stroke::new(1.0, if selected { ACCENT_HI } else { egui::Color32::from_rgb(42, 58, 78) }))
-                            .rounding(egui::Rounding::same(8.0))
+                        egui::Button::new(
+                            egui::RichText::new(format!("{label}  {count}"))
+                                .size(9.5)
+                                .strong()
+                                .color(if selected { INK } else { DIM })
+                        )
+                        .fill(if selected { ACCENT } else { PANEL_HI })
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            if selected { ACCENT_HI } else { egui::Color32::from_rgb(39, 58, 82) }
+                        ))
+                        .rounding(egui::Rounding::same(9.0))
                     ).clicked() {
                         self.tool_source = idx;
                     }
                 }
             });
         });
+        Self::glow_outline(ui, search_shell.response.rect, ACCENT, false);
 
         ui.add_space(10.0);
         let needle = self.tool_filter.trim().to_ascii_lowercase();
@@ -934,37 +943,47 @@ impl AgentApp {
                     return;
                 }
 
-                ui.columns(2, |cols| {
+                ui.columns(3, |cols| {
                     for (index, tool) in filtered.iter().enumerate() {
-                        let col = &mut cols[index % 2];
+                        let col = &mut cols[index % 3];
                         let (tag, color) = tool_source_style(&tool.source);
-                        Self::glow_panel(if tool.available { color } else { GREY }).show(col, |ui| {
+                        let tool_card = Self::glow_panel(if tool.available { color } else { GREY }).show(col, |ui| {
+                            ui.set_min_height(74.0);
                             ui.horizontal(|ui| {
                                 egui::Frame::none()
-                                    .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 28))
-                                    .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.7)))
+                                    .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 24))
+                                    .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.72)))
                                     .rounding(egui::Rounding::same(6.0))
                                     .inner_margin(egui::Margin::symmetric(7.0, 3.0))
                                     .show(ui, |ui| {
-                                        ui.label(egui::RichText::new(tag).size(8.5).strong().color(color));
+                                        ui.label(egui::RichText::new(tag).size(8.3).strong().color(color));
                                     });
-
                                 ui.label(
                                     egui::RichText::new(&tool.name)
                                         .monospace()
-                                        .size(11.2)
+                                        .size(10.8)
                                         .strong()
                                         .color(if tool.available { FG } else { GREY })
                                 );
-
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                     Self::dot(ui, if tool.available { GREEN } else { GREY });
                                 });
                             });
-                            ui.add_space(5.0);
-                            ui.label(egui::RichText::new(&tool.source).size(8.8).color(FAINT));
+                            ui.add_space(7.0);
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new(&tool.source).size(8.7).color(FAINT));
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    ui.label(
+                                        egui::RichText::new(if tool.available { "AVAILABLE" } else { "OFFLINE" })
+                                            .size(7.6)
+                                            .strong()
+                                            .color(if tool.available { GREEN } else { GREY })
+                                    );
+                                });
+                            });
                         });
-                        col.add_space(8.0);
+                        Self::glow_outline(col, tool_card.response.rect, color, false);
+                        col.add_space(9.0);
                     }
                 });
             });
@@ -1007,15 +1026,15 @@ impl AgentApp {
             .id_salt("mcp-list")
             .max_height(545.0)
             .show(ui, |ui| {
-                ui.columns(2, |cols| {
+                ui.columns(3, |cols| {
                     for (index, entry) in entries.iter().enumerate() {
-                        let col = &mut cols[index % 2];
+                        let col = &mut cols[index % 3];
                         let enabled = mcp_addons::is_enabled(entry.id);
                         let status = live.iter().find(|server| server.id == entry.id);
                         let alive = status.map(|server| server.alive).unwrap_or(false);
                         let accent = if alive { GREEN } else if enabled { AMBER } else { egui::Color32::from_rgb(78, 111, 153) };
 
-                        Self::glow_panel(accent).show(col, |ui| {
+                        let server_card = Self::glow_panel(accent).show(col, |ui| {
                             ui.horizontal(|ui| {
                                 ui.vertical(|ui| {
                                     ui.label(egui::RichText::new(entry.name).size(12.5).strong().color(FG));
@@ -1065,7 +1084,8 @@ impl AgentApp {
                                 }
                             }
                         });
-                        col.add_space(8.0);
+                        Self::glow_outline(col, server_card.response.rect, accent, alive);
+                        col.add_space(9.0);
                     }
                 });
             });
@@ -1327,6 +1347,7 @@ impl App for AgentApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(BG).inner_margin(egui::Margin::symmetric(18.0, 14.0)))
             .show(ctx, |ui| {
+                Self::paint_background(ui);
                 self.render_header(ui);
                 match self.page {
                     Page::Home => self.render_home(ui),
@@ -1580,7 +1601,7 @@ pub fn run_gui(
 ) -> eframe::Result<()> {
     let options = NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1220.0, 780.0])
+            .with_inner_size([1320.0, 820.0])
             .with_min_inner_size([900.0, 620.0])
             .with_icon(window_icon())
             .with_title("PlazCode"),
@@ -1590,7 +1611,8 @@ pub fn run_gui(
     eframe::run_native(
         "PlazCode",
         options,
-        Box::new(move |_cc| {
+        Box::new(move |cc| {
+            install_style(&cc.egui_ctx);
             Ok(Box::new(AgentApp {
                 shared,
                 restart_tx,
