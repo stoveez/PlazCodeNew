@@ -614,10 +614,12 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
 }
 
 async fn preferences_get_handler(State(state): State<AppState>) -> impl IntoResponse {
+    state.ui.mark_extension_seen();
     Json(serde_json::to_value(state.preferences.snapshot()).unwrap_or_else(|_| serde_json::json!({})))
 }
 
 async fn preferences_post_handler(State(state): State<AppState>, Json(req): Json<serde_json::Value>) -> impl IntoResponse {
+    state.ui.mark_extension_seen();
     match state.preferences.patch(req) {
         Ok(prefs) => {
             state.workspace.set_full_access(prefs.perm_mode == "full");
@@ -661,7 +663,9 @@ async fn mcp_toggle_handler(State(state): State<AppState>, Json(req): Json<McpTo
     }
 }
 
-async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {    Json(serde_json::json!({
+async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
+    state.ui.mark_extension_seen();
+    Json(serde_json::json!({
         "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
         "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
         "local_bridge_connected": state.local_clients.read().await.len() > 0,
