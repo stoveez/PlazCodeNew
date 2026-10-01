@@ -1,0 +1,31 @@
+PlazCode 1.18.53
+
+Changes:
+- Automatically pair the extension with the matching local agent at startup and reconnect. No key copy/paste is needed.
+- Automatically refresh an outdated key after an HTTP authentication failure.
+- Add Plan mode beside Extra Thinking in the Chrome extension popup.
+- Add Default, Low, Medium, High and Max reasoning choices. These synchronize with the existing on-page settings and apply on the next turn. A reasoning preference does not guarantee a site's native model offers the same setting.
+- Both extension and rebuilt agent report 1.18.53.
+
+Install:
+1. Close the old agent.
+2. Extract this full package and replace the previous package files.
+3. Reload the extension in chrome://extensions.
+4. Start the new plazcode-agent.exe and refresh the AI site. Pairing happens automatically.
+5. Click the PlazCode extension icon to change Plan mode or Reasoning level.
+
+Security boundary:
+- Command requests still require the local pairing key.
+- The pairing endpoint requires a POST with an extension-ID header and JSON content type. When a browser Origin is present, it must match that extension ID. Ordinary web origins, opaque/null origins, mismatched extension origins, and simple unauthenticated page requests are rejected.
+- Chrome extension service-worker requests may omit Origin; the custom-header requirement prevents ordinary no-cors webpage requests from using this path.
+- Automatic pairing trusts locally installed extensions and native local applications. It is not a security boundary against malicious software or other users already able to issue local requests. Manual pairing provided a stronger local-client boundary.
+- The key stays outside the release directory and is never included in the ZIP.
+- Blanket automatic file unblocking and automatic Python-process termination remain removed.
+
+Validation:
+- Windows x64 release built from source with Cargo --locked; no executable version-string patching.
+- JavaScript syntax checks passed.
+- Tests passed for automatic pairing, concurrent pairing, outdated-key recovery and invalid responses.
+- Rust tests passed for command authentication and rejection of ordinary web origins at pairing.
+- Popup DOM checks passed for loading, saving and synchronizing Plan mode and reasoning level.
+- Native Windows GUI/browser integration and Microsoft Defender scanning were not available here. This binary remains unsigned; no claim is made that a Defender detection is impossible or resolved.
