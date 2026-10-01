@@ -270,23 +270,15 @@ fn window_icon() -> anyhow::Result<Icon> {
 }
 
 #[cfg(windows)]
-fn wait_for_desktop_server() {
-    for _ in 0..40 {
-        if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
-            return;
-        }
-        std::thread::sleep(Duration::from_millis(50));
-    }
-}
-
-#[cfg(windows)]
 pub fn run_gui(
     shared: Arc<UiShared>,
     _restart_tx: tokio::sync::mpsc::UnboundedSender<()>,
     _preferences: Arc<preferences::PreferencesStore>,
 ) -> anyhow::Result<()> {
     let pairing_key = crate::security::load_key()?;
-    wait_for_desktop_server();
+    let desktop_html = include_str!("desktop.html")
+        .replace("__PLAZCODE_PAIRING_KEY__", pairing_key.as_str())
+        .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
 
     let mut event_loop = EventLoopBuilder::<UiEvent>::with_user_event().build();
     let window = WindowBuilder::new()
@@ -301,14 +293,8 @@ pub fn run_gui(
 
     let proxy = event_loop.create_proxy();
     let ipc_proxy = proxy.clone();
-    let mut headers = http::HeaderMap::new();
-    headers.insert(
-        http::header::AUTHORIZATION,
-        http::HeaderValue::from_str(&format!("Bearer {pairing_key}"))?,
-    );
-
     let _webview = WebViewBuilder::new()
-        .with_url_and_headers("http://127.0.0.1:3000/desktop", headers)
+        .with_html(desktop_html)
         .with_ipc_handler(move |request| {
             let body = request.body().as_str();
             let event = match body {
