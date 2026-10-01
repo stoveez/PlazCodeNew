@@ -1,8 +1,8 @@
 PlazCode 1.18.63
 
 Changes:
-- Load the desktop HTML/CSS directly from the packaged executable instead of navigating the WebView to http://127.0.0.1:3000/desktop. The PlazCode window now renders even if the local bridge is still starting, so the app cannot fall through to an Edge ERR_CONNECTION_REFUSED page.
-- Keep the existing authenticated loopback APIs for live state/actions. The embedded WebView null origin is explicitly allowed by CORS, while the existing bearer pairing key remains required.
+- Load the desktop HTML/CSS directly from the packaged executable through a dedicated plazcode:// custom WebView protocol instead of navigating the WebView to http://127.0.0.1:3000/desktop. The PlazCode window now renders even if the local bridge is still starting, so the app cannot fall through to an Edge ERR_CONNECTION_REFUSED page.
+- Keep the existing authenticated loopback APIs for live state/actions. The desktop uses the dedicated http://plazcode.localhost WebView origin on Windows, while generic webpage and null origins remain rejected and the existing bearer pairing key remains required.
 - Treat temporary bridge-startup connection failures as a retry/reconnecting state instead of reporting them as fatal JavaScript crashes.
 - Add regression guards that require embedded with_html startup and reject any return to server-dependent WebView document loading.
 - Restore WebView interaction bootstrap so navigation and controls bind before any bridge/API request. Home, Tools, MCP Servers, Terminal, Settings, quick actions, settings controls, and native window controls remain usable even if live status data is temporarily unavailable.
