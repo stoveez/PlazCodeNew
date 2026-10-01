@@ -302,6 +302,21 @@ if (!cargoToml.includes('wry = { version = "0.57.0"') || !cargoToml.includes('ta
   throw new Error("WebView2/Tao desktop renderer dependencies missing");
 }
 if (cargoToml.includes("eframe =")) throw new Error("Legacy egui renderer dependency returned");
+
+const guiRs = fs.readFileSync("agent/src/gui.rs", "utf8");
+if (!guiRs.includes(".with_html(desktop_html)")) {
+  throw new Error("Desktop WebView must load embedded HTML directly");
+}
+if (guiRs.includes('with_url_and_headers("http://127.0.0.1:3000/desktop"')) {
+  throw new Error("Desktop WebView regressed to server-dependent document startup");
+}
+if (guiRs.includes("wait_for_desktop_server")) {
+  throw new Error("Desktop WebView should not block waiting for the local HTTP server");
+}
+const securityRs = fs.readFileSync("agent/src/security.rs", "utf8");
+if (!securityRs.includes('"null"')) {
+  throw new Error("Embedded WebView null origin is not explicitly allowed");
+}
 for (const entry of manifest.content_scripts || []) {
   for (const path of entry.js || []) {
     if (!fs.existsSync(path)) throw new Error("Manifest references missing JS: " + path);
