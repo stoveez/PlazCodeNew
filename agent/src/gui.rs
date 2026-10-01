@@ -193,13 +193,15 @@ impl UiShared {
 }
 
 #[cfg(windows)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 enum UiEvent {
     Hide,
     Quit,
     Minimize,
     Maximize,
     Drag,
+    Ready,
+    JsError(String),
 }
 
 #[cfg(windows)]
@@ -308,13 +310,15 @@ pub fn run_gui(
     let _webview = WebViewBuilder::new()
         .with_url_and_headers("http://127.0.0.1:3000/desktop", headers)
         .with_ipc_handler(move |request| {
-            let event = match request.body().as_str() {
+            let body = request.body().as_str();
+            let event = match body {
                 "hide" => Some(UiEvent::Hide),
                 "quit" => Some(UiEvent::Quit),
                 "minimize" => Some(UiEvent::Minimize),
                 "maximize" => Some(UiEvent::Maximize),
                 "drag" => Some(UiEvent::Drag),
-                _ => None,
+                "ui-ready" => Some(UiEvent::Ready),
+                _ => body.strip_prefix("js-error:").map(|message| UiEvent::JsError(message.to_string())),
             };
             if let Some(event) = event {
                 let _ = ipc_proxy.send_event(event);
@@ -338,6 +342,14 @@ pub fn run_gui(
             Event::UserEvent(UiEvent::Maximize) => window.set_maximized(!window.is_maximized()),
             Event::UserEvent(UiEvent::Drag) => {
                 let _ = window.drag_window();
+            }
+            Event::UserEvent(UiEvent::Ready) => {
+                shared.log("desktop WebView UI ready");
+            }
+            Event::UserEvent(UiEvent::JsError(message)) => {
+                let line = format!("ERROR desktop WebView JavaScript: {message}");
+                shared.log(&line);
+                shared.set_fatal(line);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
