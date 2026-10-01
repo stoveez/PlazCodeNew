@@ -65,6 +65,9 @@ jobs:
       - name: Build release agent
         shell: pwsh
         run: cargo build --release --locked --manifest-path agent/Cargo.toml
+      - name: Embed PlazCode app icon
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File agent/embed-plazcode-icon.ps1 -ExePath agent/target/release/PlazCode.exe
       - name: Package PlazCode zip
         shell: pwsh
         run: |
@@ -79,10 +82,10 @@ jobs:
           }
           Copy-Item "agent\target\release\PlazCode.exe" (Join-Path $stage "PlazCode.exe") -Force
           Copy-Item "agent\target\release\PlazCode.exe" (Join-Path $stage "plazcode-agent.exe") -Force
-          tar -a -c -f "PlazCode-1.18.56.zip" -C $env:RUNNER_TEMP PlazCode
+          tar -a -c -f "PlazCode-1.18.57.zip" -C $env:RUNNER_TEMP PlazCode
       - uses: actions/upload-artifact@v4
         with:
-          name: PlazCode-1.18.56
-          path: PlazCode-1.18.56.zip
+          name: PlazCode-1.18.57
+          path: PlazCode-1.18.57.zip
           if-no-files-found: error
           retention-days: 14
