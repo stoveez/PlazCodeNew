@@ -1,4 +1,3 @@
-#[path = "../../../agent/src/security.rs"]
 mod security;
 #[cfg(test)]
 mod integration {
