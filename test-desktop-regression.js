@@ -70,7 +70,7 @@ for (const path of requiredProviders) {
 }
 
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
-if (manifest.version !== "1.18.65") throw new Error("Expected extension version 1.18.65");
+if (manifest.version !== "1.18.66") throw new Error("Expected extension version 1.18.66");
 
 const cargoToml = fs.readFileSync("agent/Cargo.toml", "utf8");
 const cargoVersion = cargoToml.match(/^version = "([^"]+)"/m)?.[1];
