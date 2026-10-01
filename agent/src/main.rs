@@ -402,6 +402,7 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
     if !addr.ip().is_loopback() {
         return false;
     }
+
     let client = match reqwest::Client::builder()
         .timeout(Duration::from_millis(900))
         .build()
@@ -409,8 +410,32 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
         Ok(client) => client,
         Err(_) => return false,
     };
-    let url = format!("http://{addr}/api/show");
-    match client.post(url).bearer_auth(pairing_key).send().await {
+
+    let root_url = format!("http://{addr}/");
+    let running_version = match client.get(root_url).bearer_auth(pairing_key).send().await {
+        Ok(response) if response.status().is_success() => response
+            .json::<serde_json::Value>()
+            .await
+            .ok()
+            .and_then(|body| body.get("version").and_then(|value| value.as_str()).map(str::to_string)),
+        _ => None,
+    };
+
+    let Some(running_version) = running_version else {
+        return false;
+    };
+
+    if running_version != env!("CARGO_PKG_VERSION") {
+        info!(
+            "older PlazCode instance v{} detected while launching v{} — replacing it",
+            running_version,
+            env!("CARGO_PKG_VERSION")
+        );
+        return false;
+    }
+
+    let show_url = format!("http://{addr}/api/show");
+    match client.post(show_url).bearer_auth(pairing_key).send().await {
         Ok(response) => response.status().is_success(),
         Err(_) => false,
     }
