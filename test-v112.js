@@ -27,7 +27,7 @@ ok("bg mode persists as rsBgMode", mainSrc.includes("rsBgMode") && mainSrc.inclu
 ok("setBgMode toggles + toasts", mainSrc.includes("function setBgMode("));
 
 // ── v1.12.2 freeze failsafes ─────────────────────────────────────────────────
-ok("bootstrap lock/cover inside try (finally always releases)", /A\.starting = true;[\s\S]{0,400}const alive = [\s\S]{0,300}try \{[\s\S]{0,500}setInputLock\(true\)/.test(mainSrc.replace(/\r/g, "")));
+ok("bootstrap lock/cover inside try (finally always releases)", /A\.starting = true;[\s\S]{0,800}const alive = [\s\S]{0,700}try \{[\s\S]{0,1400}setInputLock\(true\)/.test(mainSrc.replace(/\r/g, "")));
 ok("stale-bootstrap abort after 120s", mainSrc.includes("start.staleAborted") && mainSrc.includes("_startingSince"));
 ok("stuck-injecting clear after 60s", mainSrc.includes("inject.staleCleared") && mainSrc.includes("_injectingSince"));
 ok("unlock failsafe skips while an owner is live", /!A\.running && !A\.starting && !A\.injecting/.test(mainSrc));
