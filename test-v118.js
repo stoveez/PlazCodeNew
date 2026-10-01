@@ -440,6 +440,7 @@ const WIKI_JSON = JSON.stringify({ query: { search: [{ title: "Roblox" }, { titl
   {
     // Same call, text-only answer: no phantom image may be invented.
     const { listeners, sockets } = makeWorker(async () => ({}));
+    await new Promise((r) => setTimeout(r, 0));
     sockets[sockets.length - 1].onopen();
     await new Promise((r) => setTimeout(r, 0));
     const sock = sockets[sockets.length - 1];
@@ -453,6 +454,7 @@ const WIKI_JSON = JSON.stringify({ query: { search: [{ title: "Roblox" }, { titl
   }
   {
     const { listeners, sockets } = makeWorker(async () => ({}));
+    await new Promise((r) => setTimeout(r, 0));
     sockets[sockets.length - 1].onopen();
     await new Promise((r) => setTimeout(r, 0));
     const sock = sockets[sockets.length - 1];
