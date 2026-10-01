@@ -263,47 +263,64 @@ pub struct AgentApp {
     page: Page,
     log_filter: usize,
     tool_filter: String,
+    tool_source: usize,
     catalog_notice: Option<(String, bool)>,
 }
 
 impl AgentApp {
     fn dot(ui: &mut egui::Ui, color: egui::Color32) {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(11.0, 11.0), egui::Sense::hover());
-        ui.painter().circle_filled(rect.center(), 3.6, color);
-        ui.painter().circle_stroke(rect.center(), 4.8, egui::Stroke::new(1.0, color.gamma_multiply(0.45)));
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+        ui.painter().circle_filled(rect.center(), 3.8, color);
+        ui.painter().circle_stroke(rect.center(), 5.1, egui::Stroke::new(1.0, color.gamma_multiply(0.35)));
     }
 
     fn panel() -> egui::Frame {
         egui::Frame::none()
             .fill(PANEL)
             .stroke(egui::Stroke::new(1.0, LINE))
-            .rounding(egui::Rounding::same(10.0))
-            .inner_margin(egui::Margin::same(14.0))
+            .rounding(egui::Rounding::same(12.0))
+            .inner_margin(egui::Margin::same(16.0))
+    }
+
+    fn glow_panel(color: egui::Color32) -> egui::Frame {
+        egui::Frame::none()
+            .fill(PANEL)
+            .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.58)))
+            .rounding(egui::Rounding::same(12.0))
+            .inner_margin(egui::Margin::same(16.0))
     }
 
     fn section_title(ui: &mut egui::Ui, title: &str, subtitle: &str) {
-        ui.label(egui::RichText::new(title).size(22.0).strong().color(FG));
-        ui.add_space(2.0);
-        ui.label(egui::RichText::new(subtitle).size(11.0).color(FAINT));
-        ui.add_space(14.0);
+        ui.label(egui::RichText::new(title).size(29.0).strong().color(FG));
+        ui.add_space(3.0);
+        ui.label(egui::RichText::new(subtitle).size(11.5).color(DIM));
+        ui.add_space(15.0);
     }
 
     fn nav_button(&mut self, ui: &mut egui::Ui, page: Page, icon: &str, label: &str) {
         let selected = self.page == page;
-        let text = egui::RichText::new(format!("{icon}  {label}"))
-            .size(12.0)
+        let text = egui::RichText::new(format!("{icon}   {label}"))
+            .size(12.5)
             .strong()
-            .color(if selected { INK } else { DIM });
-        let button = egui::Button::new(text)
-            .fill(if selected { ACCENT } else { egui::Color32::TRANSPARENT })
-            .stroke(if selected {
-                egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 120))
-            } else {
-                egui::Stroke::NONE
-            })
-            .rounding(egui::Rounding::same(7.0))
-            .min_size(egui::vec2(ui.available_width(), 34.0));
-        if ui.add(button).clicked() {
+            .color(if selected { FG } else { DIM });
+        let fill = if selected {
+            egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 34)
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+        let stroke = if selected {
+            egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.8))
+        } else {
+            egui::Stroke::NONE
+        };
+
+        if ui.add(
+            egui::Button::new(text)
+                .fill(fill)
+                .stroke(stroke)
+                .rounding(egui::Rounding::same(9.0))
+                .min_size(egui::vec2(ui.available_width(), 39.0))
+        ).clicked() {
             self.page = page;
         }
     }
@@ -311,103 +328,185 @@ impl AgentApp {
     fn render_sidebar(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("plazcode-sidebar")
             .resizable(false)
-            .exact_width(178.0)
-            .frame(egui::Frame::none().fill(SIDEBAR).inner_margin(egui::Margin::same(12.0)))
+            .exact_width(198.0)
+            .frame(
+                egui::Frame::none()
+                    .fill(SIDEBAR)
+                    .inner_margin(egui::Margin::same(14.0))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(24, 39, 58)))
+            )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let (rect, _) = ui.allocate_exact_size(egui::vec2(28.0, 28.0), egui::Sense::hover());
-                    ui.painter().rect_filled(rect, egui::Rounding::same(6.0), ACCENT);
+                    let (rect, _) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), egui::Sense::hover());
+                    ui.painter().rect_filled(rect, egui::Rounding::same(9.0), PANEL_HI);
+                    ui.painter().rect_stroke(
+                        rect,
+                        egui::Rounding::same(9.0),
+                        egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.8)),
+                    );
                     ui.painter().text(
                         rect.center(),
                         egui::Align2::CENTER_CENTER,
                         "P",
-                        egui::FontId::proportional(16.0),
-                        INK,
+                        egui::FontId::proportional(20.0),
+                        ACCENT_HI,
                     );
                     ui.vertical(|ui| {
-                        ui.label(egui::RichText::new("PlazCode").size(14.0).strong().color(FG));
-                        ui.label(egui::RichText::new(format!("v{}", display_version())).size(9.5).color(FAINT));
+                        ui.label(egui::RichText::new("PlazCode").size(16.0).strong().color(FG));
+                        ui.label(egui::RichText::new(format!("Desktop v{}", display_version())).size(9.0).color(FAINT));
                     });
                 });
 
-                ui.add_space(20.0);
+                ui.add_space(22.0);
                 self.nav_button(ui, Page::Home, "⌂", "Home");
                 self.nav_button(ui, Page::Tools, "⌘", "Tools");
                 self.nav_button(ui, Page::Mcp, "◫", "MCP Servers");
-                self.nav_button(ui, Page::Console, ">_", "Console");
+                self.nav_button(ui, Page::Console, ">_", "Terminal");
                 self.nav_button(ui, Page::Settings, "⚙", "Settings");
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     let studio = self.shared.studio_running.load(Ordering::Relaxed);
                     let mcp = self.shared.mcp_alive.load(Ordering::Relaxed);
+                    let extension = self.shared.extension_recent();
+
+                    Self::glow_panel(if extension { GREEN } else { AMBER }).show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            Self::dot(ui, if extension { GREEN } else { AMBER });
+                            ui.vertical(|ui| {
+                                ui.label(egui::RichText::new(if extension { "Bridge connected" } else { "Waiting for extension" }).size(10.5).strong().color(FG));
+                                ui.label(egui::RichText::new("127.0.0.1 local bridge").size(8.7).color(FAINT));
+                            });
+                        });
+                    });
+
+                    ui.add_space(10.0);
                     ui.horizontal(|ui| {
                         Self::dot(ui, if studio && mcp { GREEN } else { GREY });
-                        ui.label(egui::RichText::new(if studio && mcp { "Studio connected" } else { "Studio offline" }).size(10.5).color(DIM));
+                        ui.label(
+                            egui::RichText::new(if studio && mcp { "Studio connected" } else { "Studio offline" })
+                                .size(9.5)
+                                .color(DIM)
+                        );
                     });
-                    ui.add_space(8.0);
+                    ui.add_space(4.0);
                 });
             });
     }
 
     fn render_header(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
+            ui.label(
+                egui::RichText::new("BUILD MORE  /  CODE SMARTER  /  WITH AI")
+                    .size(8.8)
+                    .color(FAINT)
+            );
+
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.add(
-                    egui::Button::new(egui::RichText::new("Hide").size(10.5).strong().color(DIM))
+                    egui::Button::new(egui::RichText::new("Hide").size(10.0).strong().color(DIM))
                         .fill(PANEL_HI)
-                        .stroke(egui::Stroke::new(1.0, LINE))
-                        .rounding(egui::Rounding::same(7.0))
+                        .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(42, 58, 78)))
+                        .rounding(egui::Rounding::same(8.0))
                 ).clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Visible(false));
                     self.shared.log("desktop window hidden — PlazCode is still running in the background");
                 }
+
                 if ui.add(
-                    egui::Button::new(egui::RichText::new("Restart MCP").size(10.5).strong().color(INK))
+                    egui::Button::new(egui::RichText::new("Restart MCP").size(10.0).strong().color(INK))
                         .fill(ACCENT)
                         .stroke(egui::Stroke::new(1.0, ACCENT_HI))
-                        .rounding(egui::Rounding::same(7.0))
+                        .rounding(egui::Rounding::same(8.0))
                 ).clicked() {
                     let _ = self.restart_tx.send(());
                 }
+
                 let up = self.booted.elapsed();
-                let text = if up.as_secs() >= 3600 {
+                let uptime = if up.as_secs() >= 3600 {
                     format!("up {}h {:02}m", up.as_secs() / 3600, (up.as_secs() % 3600) / 60)
                 } else {
                     format!("up {}m {:02}s", up.as_secs() / 60, up.as_secs() % 60)
                 };
-                ui.label(egui::RichText::new(text).size(10.0).color(FAINT));
+                ui.label(egui::RichText::new(uptime).size(9.2).color(FAINT));
             });
         });
 
         if let Some(msg) = self.shared.fatal.lock().unwrap_or_else(|e| e.into_inner()).clone() {
-            ui.add_space(8.0);
+            ui.add_space(9.0);
             egui::Frame::none()
-                .fill(egui::Color32::from_rgba_unmultiplied(RED.r(), RED.g(), RED.b(), 28))
-                .stroke(egui::Stroke::new(1.0, RED))
-                .rounding(egui::Rounding::same(8.0))
-                .inner_margin(egui::Margin::same(9.0))
+                .fill(egui::Color32::from_rgba_unmultiplied(RED.r(), RED.g(), RED.b(), 24))
+                .stroke(egui::Stroke::new(1.0, RED.gamma_multiply(0.8)))
+                .rounding(egui::Rounding::same(9.0))
+                .inner_margin(egui::Margin::same(10.0))
                 .show(ui, |ui| {
-                    ui.label(egui::RichText::new(format!("Agent error: {msg}")).size(11.0).color(RED));
+                    ui.label(egui::RichText::new(format!("Agent error: {msg}")).size(10.5).color(RED));
                 });
         }
-        ui.add_space(6.0);
+        ui.add_space(8.0);
     }
 
-    fn stat_card(ui: &mut egui::Ui, title: &str, value: &str, subtitle: &str, ok: bool) {
-        Self::panel().show(ui, |ui| {
-            ui.set_min_width(180.0);
+    fn hero(&self, ui: &mut egui::Ui) {
+        egui::Frame::none()
+            .fill(egui::Color32::from_rgb(8, 22, 39))
+            .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.45)))
+            .rounding(egui::Rounding::same(14.0))
+            .inner_margin(egui::Margin::symmetric(20.0, 17.0))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.label(egui::RichText::new("PlazCode").size(31.0).strong().color(FG));
+                        ui.label(egui::RichText::new("Your browser-first Roblox AI development control center.").size(11.5).color(DIM));
+                        ui.add_space(8.0);
+                        ui.horizontal_wrapped(|ui| {
+                            badge(ui, "Browser AI", if self.shared.extension_recent() { "connected" } else { "waiting" });
+                            badge(ui, "Bridge", "127.0.0.1");
+                            badge(ui, "Desktop", "background ready");
+                        });
+                    });
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        egui::Frame::none()
+                            .fill(egui::Color32::from_rgba_unmultiplied(ACCENT.r(), ACCENT.g(), ACCENT.b(), 24))
+                            .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.7)))
+                            .rounding(egui::Rounding::same(14.0))
+                            .inner_margin(egui::Margin::symmetric(18.0, 10.0))
+                            .show(ui, |ui| {
+                                ui.label(egui::RichText::new("P").size(38.0).strong().color(ACCENT_HI));
+                            });
+                    });
+                });
+            });
+    }
+
+    fn stat_card(ui: &mut egui::Ui, title: &str, value: &str, subtitle: &str, color: egui::Color32, ok: bool) {
+        Self::glow_panel(if ok { color } else { GREY }).show(ui, |ui| {
+            ui.set_min_height(86.0);
             ui.horizontal(|ui| {
-                Self::dot(ui, if ok { GREEN } else { GREY });
-                ui.label(egui::RichText::new(title).size(10.0).strong().color(DIM));
+                Self::dot(ui, if ok { color } else { GREY });
+                ui.label(egui::RichText::new(title.to_uppercase()).size(9.0).strong().color(DIM));
             });
             ui.add_space(9.0);
-            ui.label(egui::RichText::new(value).size(18.0).strong().color(FG));
-            ui.label(egui::RichText::new(subtitle).size(9.5).color(FAINT));
+            ui.label(egui::RichText::new(value).size(19.0).strong().color(FG));
+            ui.label(egui::RichText::new(subtitle).size(9.0).color(FAINT));
         });
     }
 
+    fn action_button(ui: &mut egui::Ui, title: &str, subtitle: &str) -> bool {
+        let button = egui::Button::new(
+            egui::RichText::new(format!("{title}\n{subtitle}"))
+                .size(10.5)
+                .color(FG)
+        )
+        .fill(PANEL_HI)
+        .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.35)))
+        .rounding(egui::Rounding::same(10.0))
+        .min_size(egui::vec2(ui.available_width(), 54.0));
+        ui.add(button).clicked()
+    }
+
     fn render_home(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "Control Center", "PlazCode extension, Roblox Studio bridge and local workspace status.");
+        self.hero(ui);
+        ui.add_space(13.0);
 
         let studio = self.shared.studio_running.load(Ordering::Relaxed);
         let mcp = self.shared.mcp_alive.load(Ordering::Relaxed);
@@ -417,192 +516,354 @@ impl AgentApp {
         let root = self.shared.workspace_root.lock().map(|v| v.clone()).unwrap_or_default();
 
         ui.columns(4, |cols| {
-            Self::stat_card(&mut cols[0], "Browser extension", if extension { "Connected" } else { "Waiting" }, "Last contact < 15 seconds", extension);
-            Self::stat_card(&mut cols[1], "Roblox Studio", if studio && mcp { "Connected" } else if studio { "Open" } else { "Offline" }, "Built-in Studio MCP", studio && mcp);
-            Self::stat_card(&mut cols[2], "AgentScript", if workspace { "Ready" } else { "Offline" }, "Files + terminal workspace", workspace);
-            Self::stat_card(&mut cols[3], "Available tools", &tools.to_string(), "Studio + configured MCP", tools > 0);
+            Self::stat_card(&mut cols[0], "Bridge", if extension { "Connected" } else { "Waiting" }, "Browser extension link", GREEN, extension);
+            Self::stat_card(&mut cols[1], "Roblox Studio", if studio && mcp { "Connected" } else if studio { "Open" } else { "Offline" }, "Primary Studio MCP", AMBER, studio && mcp);
+            Self::stat_card(&mut cols[2], "Tools", &tools.to_string(), "Live tool catalog", egui::Color32::from_rgb(86, 158, 255), tools > 0);
+            Self::stat_card(&mut cols[3], "Workspace", if workspace { "Ready" } else { "Off" }, "AgentScript files", egui::Color32::from_rgb(146, 111, 255), workspace);
         });
 
-        ui.add_space(12.0);
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Workspace").size(12.0).strong().color(FG));
-            ui.add_space(7.0);
-            ui.label(egui::RichText::new(if root.is_empty() { "(not configured)" } else { &root }).monospace().size(10.5).color(DIM));
-            ui.add_space(9.0);
+        ui.add_space(13.0);
+        ui.columns(2, |cols| {
+            Self::panel().show(&mut cols[0], |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Quick actions").size(13.0).strong().color(FG));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new("real desktop controls").size(8.5).color(FAINT));
+                    });
+                });
+                ui.add_space(10.0);
 
-            let prefs = self.preferences.snapshot();
-            ui.horizontal_wrapped(|ui| {
-                badge(ui, "Engine", if prefs.engine == "local" { "AgentScript" } else { "Roblox" });
-                badge(ui, "Work mode", &prefs.work_mode);
-                badge(ui, "Reasoning", &prefs.thinking_level);
-                badge(ui, "Plan", if prefs.plan_mode { "on" } else { "off" });
-                badge(ui, "Extra", if prefs.extra_thinking { "on" } else { "off" });
+                ui.columns(2, |actions| {
+                    if Self::action_button(&mut actions[0], "Browse tools", "See every live PlazCode tool") {
+                        self.page = Page::Tools;
+                    }
+                    if Self::action_button(&mut actions[1], "MCP servers", "Manage optional integrations") {
+                        self.page = Page::Mcp;
+                    }
+                    actions[0].add_space(8.0);
+                    actions[1].add_space(8.0);
+                    if Self::action_button(&mut actions[0], "Open terminal", "Inspect bridge and MCP logs") {
+                        self.page = Page::Console;
+                    }
+                    if Self::action_button(&mut actions[1], "Settings", "Adjust synced AI preferences") {
+                        self.page = Page::Settings;
+                    }
+                });
+
+                ui.add_space(12.0);
+                ui.label(egui::RichText::new("Workspace").size(10.0).strong().color(DIM));
+                ui.label(
+                    egui::RichText::new(if root.is_empty() { "(not configured)" } else { &root })
+                        .monospace()
+                        .size(9.2)
+                        .color(FAINT)
+                );
+
+                let prefs = self.preferences.snapshot();
+                ui.add_space(8.0);
+                ui.horizontal_wrapped(|ui| {
+                    badge(ui, "Engine", if prefs.engine == "local" { "AgentScript" } else { "Roblox" });
+                    badge(ui, "Work", &prefs.work_mode);
+                    badge(ui, "Reasoning", reasoning_label(&prefs.thinking_level));
+                    badge(ui, "Plan", if prefs.plan_mode { "on" } else { "off" });
+                });
             });
-        });
 
-        ui.add_space(12.0);
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Regression-safe architecture").size(12.0).strong().color(FG));
-            ui.add_space(6.0);
-            ui.label(egui::RichText::new("The desktop app controls the existing local agent and shared settings. Browser providers keep their existing adapters and message protocol.").size(10.5).color(DIM));
-            ui.add_space(8.0);
-            ui.horizontal_wrapped(|ui| {
-                badge(ui, "Extension relay", "unchanged contract");
-                badge(ui, "Provider DOM", "isolated");
-                badge(ui, "Pairing", "required");
-                badge(ui, "Loopback", "127.0.0.1");
+            Self::panel().show(&mut cols[1], |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Recent activity").size(13.0).strong().color(FG));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.add(
+                            egui::Button::new(egui::RichText::new("Clear").size(9.0).color(DIM))
+                                .fill(PANEL_HI)
+                                .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(42, 58, 78)))
+                                .rounding(egui::Rounding::same(7.0))
+                        ).clicked() {
+                            self.shared.clear_logs();
+                        }
+                    });
+                });
+                ui.add_space(8.0);
+
+                let mut recent = self.shared.logs.lock()
+                    .map(|logs| logs.iter().rev().take(8).cloned().collect::<Vec<_>>())
+                    .unwrap_or_default();
+                recent.reverse();
+
+                if recent.is_empty() {
+                    ui.label(egui::RichText::new("No recent activity yet.").size(9.5).color(FAINT));
+                } else {
+                    for line in recent {
+                        let level = line_level(&line);
+                        ui.horizontal(|ui| {
+                            Self::dot(ui, level_color(level));
+                            ui.label(
+                                egui::RichText::new(line)
+                                    .monospace()
+                                    .size(8.8)
+                                    .color(if level == Level::Info { DIM } else { level_color(level) })
+                            );
+                        });
+                        ui.add_space(3.0);
+                    }
+                }
             });
         });
     }
 
     fn render_tools(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "Tools", "All currently usable PlazCode tools, grouped by where they run.");
+        Self::section_title(ui, "Tools", "Live tools from Roblox Studio, AgentScript, PlazCode, and enabled MCP servers.");
 
-        ui.horizontal(|ui| {
-            ui.label(egui::RichText::new("Filter").size(10.0).color(FAINT));
-            ui.add(
-                egui::TextEdit::singleline(&mut self.tool_filter)
-                    .hint_text("search tools")
-                    .desired_width(260.0)
-            );
-        });
-        ui.add_space(10.0);
-
-        let tools = self.shared.tools.lock().map(|v| v.clone()).unwrap_or_default();
-        let needle = self.tool_filter.trim().to_ascii_lowercase();
-        let filtered: Vec<ToolDisplay> = tools.into_iter()
-            .filter(|tool| {
-                needle.is_empty()
-                    || tool.name.to_ascii_lowercase().contains(&needle)
-                    || tool.source.to_ascii_lowercase().contains(&needle)
-            })
-            .collect();
+        let all_tools = self.shared.tools.lock().map(|v| v.clone()).unwrap_or_default();
+        let counts = [
+            all_tools.len(),
+            all_tools.iter().filter(|tool| tool.source == "Roblox Studio").count(),
+            all_tools.iter().filter(|tool| tool.source == "AgentScript").count(),
+            all_tools.iter().filter(|tool| tool.source.starts_with("PlazCode")).count(),
+            all_tools.iter().filter(|tool| tool.source.starts_with("MCP / ")).count(),
+        ];
 
         Self::panel().show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(format!("{} tools", filtered.len())).size(10.0).strong().color(ACCENT_HI));
-                if filtered.is_empty() {
-                    ui.label(egui::RichText::new("No matching tools are currently available.").size(9.5).color(FAINT));
-                }
-            });
-            ui.add_space(8.0);
-            egui::ScrollArea::vertical().id_salt("tools-list").max_height(510.0).show(ui, |ui| {
-                for tool in filtered {
-                    let (tag, color) = if tool.source == "Roblox Studio" {
-                        ("RS", GREEN)
-                    } else if tool.source == "AgentScript" {
-                        ("AS", ACCENT_HI)
-                    } else if tool.source.starts_with("MCP / ") {
-                        ("MCP", AMBER)
-                    } else {
-                        ("PC", DIM)
-                    };
-                    ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(tag).size(8.5).strong().color(if tool.available { color } else { GREY }));
-                        ui.label(egui::RichText::new(&tool.name).monospace().size(10.5).color(if tool.available { FG } else { GREY }));
-                        ui.label(egui::RichText::new(&tool.source).size(8.8).color(FAINT));
-                    });
-                    ui.add_space(3.0);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.tool_filter)
+                        .hint_text("Search tools or sources...")
+                        .desired_width(330.0)
+                );
+                ui.add_space(8.0);
+
+                for (idx, (label, count)) in [
+                    ("All", counts[0]),
+                    ("RS", counts[1]),
+                    ("AS", counts[2]),
+                    ("PC", counts[3]),
+                    ("MCP", counts[4]),
+                ].iter().enumerate() {
+                    let selected = self.tool_source == idx;
+                    if ui.add(
+                        egui::Button::new(egui::RichText::new(format!("{label}  {count}")).size(9.5).strong().color(if selected { INK } else { DIM }))
+                            .fill(if selected { ACCENT } else { PANEL_HI })
+                            .stroke(egui::Stroke::new(1.0, if selected { ACCENT_HI } else { egui::Color32::from_rgb(42, 58, 78) }))
+                            .rounding(egui::Rounding::same(8.0))
+                    ).clicked() {
+                        self.tool_source = idx;
+                    }
                 }
             });
         });
+
+        ui.add_space(10.0);
+        let needle = self.tool_filter.trim().to_ascii_lowercase();
+        let filtered: Vec<ToolDisplay> = all_tools.into_iter()
+            .filter(|tool| {
+                let source_match = match self.tool_source {
+                    1 => tool.source == "Roblox Studio",
+                    2 => tool.source == "AgentScript",
+                    3 => tool.source.starts_with("PlazCode"),
+                    4 => tool.source.starts_with("MCP / "),
+                    _ => true,
+                };
+                let search_match = needle.is_empty()
+                    || tool.name.to_ascii_lowercase().contains(&needle)
+                    || tool.source.to_ascii_lowercase().contains(&needle);
+                source_match && search_match
+            })
+            .collect();
+
+        egui::ScrollArea::vertical()
+            .id_salt("tools-list")
+            .max_height(560.0)
+            .show(ui, |ui| {
+                if filtered.is_empty() {
+                    Self::panel().show(ui, |ui| {
+                        ui.label(egui::RichText::new("No matching tools are currently available.").size(10.0).color(FAINT));
+                    });
+                    return;
+                }
+
+                ui.columns(2, |cols| {
+                    for (index, tool) in filtered.iter().enumerate() {
+                        let col = &mut cols[index % 2];
+                        let (tag, color) = tool_source_style(&tool.source);
+                        Self::glow_panel(if tool.available { color } else { GREY }).show(col, |ui| {
+                            ui.horizontal(|ui| {
+                                egui::Frame::none()
+                                    .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 28))
+                                    .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.7)))
+                                    .rounding(egui::Rounding::same(6.0))
+                                    .inner_margin(egui::Margin::symmetric(7.0, 3.0))
+                                    .show(ui, |ui| {
+                                        ui.label(egui::RichText::new(tag).size(8.5).strong().color(color));
+                                    });
+
+                                ui.label(
+                                    egui::RichText::new(&tool.name)
+                                        .monospace()
+                                        .size(11.2)
+                                        .strong()
+                                        .color(if tool.available { FG } else { GREY })
+                                );
+
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    Self::dot(ui, if tool.available { GREEN } else { GREY });
+                                });
+                            });
+                            ui.add_space(5.0);
+                            ui.label(egui::RichText::new(&tool.source).size(8.8).color(FAINT));
+                        });
+                        col.add_space(8.0);
+                    }
+                });
+            });
     }
 
     fn render_mcp(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "MCP Servers", "Enable optional MCP servers without changing browser provider code.");
+        Self::section_title(ui, "MCP Servers", "Manage optional MCP integrations. Roblox Studio remains the protected primary server.");
 
         if let Some((message, ok)) = &self.catalog_notice {
             let color = if *ok { GREEN } else { RED };
             egui::Frame::none()
-                .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 20))
-                .stroke(egui::Stroke::new(1.0, color))
-                .rounding(egui::Rounding::same(7.0))
-                .inner_margin(egui::Margin::same(8.0))
+                .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 18))
+                .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+                .rounding(egui::Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(9.0))
                 .show(ui, |ui| {
-                    ui.label(egui::RichText::new(message).size(10.0).color(color));
+                    ui.label(egui::RichText::new(message).size(9.5).color(color));
                 });
             ui.add_space(10.0);
         }
 
-        let live = self.shared.servers.lock().map(|v| v.clone()).unwrap_or_default();
-        for entry in mcp_addons::catalog() {
-            let enabled = mcp_addons::is_enabled(entry.id);
-            let status = live.iter().find(|server| server.id == entry.id);
-
-            Self::panel().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| {
-                        ui.label(egui::RichText::new(entry.name).size(12.0).strong().color(FG));
-                        ui.label(egui::RichText::new(entry.description).size(9.5).color(FAINT));
-                        ui.add_space(5.0);
-                        ui.label(egui::RichText::new(format!("{} {}", entry.command, entry.args.join(" "))).monospace().size(9.0).color(DIM));
-                    });
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        let label = if enabled { "Disable" } else { "Enable" };
-                        if ui.add(
-                            egui::Button::new(egui::RichText::new(label).size(10.0).strong().color(if enabled { RED } else { FG }))
-                                .fill(PANEL_HI)
-                                .stroke(egui::Stroke::new(1.0, if enabled { RED.gamma_multiply(0.6) } else { LINE }))
-                                .rounding(egui::Rounding::same(6.0))
-                        ).clicked() {
-                            match mcp_addons::set_catalog_enabled(entry.id, !enabled) {
-                                Ok(()) => {
-                                    self.catalog_notice = Some((format!("{} {}. Tool discovery refreshes on the next bridge tool-list request.", entry.name, if enabled { "disabled" } else { "enabled" }), true));
-                                }
-                                Err(error) => {
-                                    self.catalog_notice = Some((error.to_string(), false));
-                                }
-                            }
-                        }
-
-                        if let Some(server) = status {
-                            ui.label(egui::RichText::new(if server.alive { format!("{} tools", server.tools) } else { "start failed".to_string() }).size(9.0).color(if server.alive { GREEN } else { AMBER }));
-                        } else if enabled {
-                            ui.label(egui::RichText::new("configured").size(9.0).color(ACCENT_HI));
-                        }
-                    });
+        let primary_alive = self.shared.mcp_alive.load(Ordering::Relaxed);
+        Self::glow_panel(if primary_alive { GREEN } else { AMBER }).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.label(egui::RichText::new("Roblox Studio MCP").size(13.5).strong().color(FG));
+                    ui.label(egui::RichText::new("Primary server • built into PlazCode • cannot be removed").size(9.2).color(FAINT));
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    status_pill(ui, if primary_alive { "Active" } else { "Waiting" }, if primary_alive { GREEN } else { AMBER });
                 });
             });
-            ui.add_space(8.0);
-        }
-
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Roblox Studio MCP").size(12.0).strong().color(FG));
-            ui.label(egui::RichText::new("Primary server. It is always enabled and cannot be removed from PlazCode.").size(9.5).color(FAINT));
         });
+
+        ui.add_space(11.0);
+        let live = self.shared.servers.lock().map(|v| v.clone()).unwrap_or_default();
+        let entries = mcp_addons::catalog();
+
+        egui::ScrollArea::vertical()
+            .id_salt("mcp-list")
+            .max_height(545.0)
+            .show(ui, |ui| {
+                ui.columns(2, |cols| {
+                    for (index, entry) in entries.iter().enumerate() {
+                        let col = &mut cols[index % 2];
+                        let enabled = mcp_addons::is_enabled(entry.id);
+                        let status = live.iter().find(|server| server.id == entry.id);
+                        let alive = status.map(|server| server.alive).unwrap_or(false);
+                        let accent = if alive { GREEN } else if enabled { AMBER } else { egui::Color32::from_rgb(78, 111, 153) };
+
+                        Self::glow_panel(accent).show(col, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.label(egui::RichText::new(entry.name).size(12.5).strong().color(FG));
+                                    ui.label(egui::RichText::new(entry.description).size(9.1).color(DIM));
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    let label = if alive { "Active" } else if enabled { "Configured" } else { "Available" };
+                                    status_pill(ui, label, accent);
+                                });
+                            });
+
+                            ui.add_space(9.0);
+                            ui.label(
+                                egui::RichText::new(format!("{} {}", entry.command, entry.args.join(" ")))
+                                    .monospace()
+                                    .size(8.4)
+                                    .color(FAINT)
+                            );
+
+                            if let Some(server) = status {
+                                if let Some(error) = &server.error {
+                                    ui.add_space(5.0);
+                                    ui.label(egui::RichText::new(error).size(8.3).color(RED));
+                                } else if server.alive {
+                                    ui.add_space(5.0);
+                                    ui.label(egui::RichText::new(format!("{} tools available", server.tools)).size(8.5).color(GREEN));
+                                }
+                            }
+
+                            ui.add_space(9.0);
+                            let label = if enabled { "Disable" } else { "Enable" };
+                            let color = if enabled { RED } else { ACCENT };
+                            if ui.add(
+                                egui::Button::new(egui::RichText::new(label).size(9.5).strong().color(if enabled { RED } else { INK }))
+                                    .fill(if enabled { PANEL_HI } else { ACCENT })
+                                    .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+                                    .rounding(egui::Rounding::same(7.0))
+                            ).clicked() {
+                                match mcp_addons::set_catalog_enabled(entry.id, !enabled) {
+                                    Ok(()) => {
+                                        self.catalog_notice = Some((
+                                            format!("{} {}. Tool discovery refreshes on the next bridge tool-list request.", entry.name, if enabled { "disabled" } else { "enabled" }),
+                                            true,
+                                        ));
+                                    }
+                                    Err(error) => self.catalog_notice = Some((error.to_string(), false)),
+                                }
+                            }
+                        });
+                        col.add_space(8.0);
+                    }
+                });
+            });
     }
 
     fn render_console(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "Console", "Agent, Studio MCP and local bridge logs.");
+        Self::section_title(ui, "Terminal", "Live PlazCode bridge, Studio, MCP, and local agent logs.");
 
         ui.horizontal(|ui| {
             for (idx, label) in ["All", "Info", "Warn", "Error"].iter().enumerate() {
-                if ui.selectable_label(self.log_filter == idx, *label).clicked() {
+                let selected = self.log_filter == idx;
+                if ui.add(
+                    egui::Button::new(egui::RichText::new(*label).size(9.5).strong().color(if selected { INK } else { DIM }))
+                        .fill(if selected { ACCENT } else { PANEL_HI })
+                        .stroke(egui::Stroke::new(1.0, if selected { ACCENT_HI } else { egui::Color32::from_rgb(42, 58, 78) }))
+                        .rounding(egui::Rounding::same(8.0))
+                ).clicked() {
                     self.log_filter = idx;
                 }
             }
+
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Clear").clicked() {
+                if ui.add(
+                    egui::Button::new(egui::RichText::new("Clear").size(9.5).color(DIM))
+                        .fill(PANEL_HI)
+                        .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(42, 58, 78)))
+                        .rounding(egui::Rounding::same(7.0))
+                ).clicked() {
                     self.shared.clear_logs();
                 }
+                badge(ui, "Tools", &self.shared.tools.lock().map(|v| v.len()).unwrap_or(0).to_string());
+                badge(ui, "Studio", if self.shared.mcp_alive.load(Ordering::Relaxed) { "online" } else { "offline" });
+                badge(ui, "Bridge", if self.shared.extension_recent() { "live" } else { "waiting" });
             });
         });
-        ui.add_space(8.0);
 
+        ui.add_space(9.0);
         let logs = self.shared.logs.lock()
             .map(|v| v.iter().cloned().collect::<Vec<_>>())
             .unwrap_or_default();
 
         egui::Frame::none()
             .fill(TERM)
-            .stroke(egui::Stroke::new(1.0, LINE))
-            .rounding(egui::Rounding::same(9.0))
-            .inner_margin(egui::Margin::same(10.0))
+            .stroke(egui::Stroke::new(1.0, ACCENT.gamma_multiply(0.35)))
+            .rounding(egui::Rounding::same(11.0))
+            .inner_margin(egui::Margin::same(12.0))
             .show(ui, |ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("console-scroll")
                     .stick_to_bottom(true)
-                    .max_height(560.0)
+                    .max_height(580.0)
                     .show(ui, |ui| {
                         for line in logs {
                             let level = line_level(&line);
@@ -613,7 +874,12 @@ impl AgentApp {
                                 _ => true,
                             };
                             if visible {
-                                ui.label(egui::RichText::new(line).monospace().size(9.6).color(level_color(level)));
+                                ui.label(
+                                    egui::RichText::new(line)
+                                        .monospace()
+                                        .size(9.4)
+                                        .color(level_color(level))
+                                );
                             }
                         }
                     });
@@ -621,109 +887,150 @@ impl AgentApp {
     }
 
     fn render_settings(&mut self, ui: &mut egui::Ui) {
-        Self::section_title(ui, "Settings", "These values sync with the extension and apply to supported AI tabs.");
+        Self::section_title(ui, "Settings", "Desktop controls sync with the extension and autosave immediately.");
 
         let mut prefs = self.preferences.snapshot();
         let mut changed = false;
 
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Engine").size(11.0).strong().color(FG));
-            ui.label(egui::RichText::new("Choose where PlazCode commands run.").size(9.5).color(FAINT));
-            ui.add_space(7.0);
-            ui.horizontal(|ui| {
-                changed |= choice(ui, &mut prefs.engine, "roblox", "Roblox Studio");
-                changed |= choice(ui, &mut prefs.engine, "local", "AgentScript");
-            });
-        });
+        ui.columns(2, |cols| {
+            let (left, right) = cols.split_at_mut(1);
+            let left = &mut left[0];
+            let right = &mut right[0];
 
-        ui.add_space(9.0);
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Work mode").size(11.0).strong().color(FG));
-            ui.label(egui::RichText::new("Matches the extension's Fast, Balanced and Thorough presets.").size(9.5).color(FAINT));
-            ui.add_space(7.0);
-            let before = prefs.work_mode.clone();
-            ui.horizontal(|ui| {
-                let _ = choice(ui, &mut prefs.work_mode, "fast", "Fast");
-                let _ = choice(ui, &mut prefs.work_mode, "balanced", "Balanced");
-                let _ = choice(ui, &mut prefs.work_mode, "thorough", "Thorough");
+            Self::panel().show(left, |ui| {
+                ui.label(egui::RichText::new("Execution").size(12.5).strong().color(FG));
+                ui.label(egui::RichText::new("Choose where commands run and how much access AgentScript receives.").size(9.0).color(FAINT));
+                ui.add_space(9.0);
+
+                ui.label(egui::RichText::new("Engine").size(9.0).strong().color(DIM));
+                ui.horizontal(|ui| {
+                    changed |= choice(ui, &mut prefs.engine, "roblox", "Roblox Studio");
+                    changed |= choice(ui, &mut prefs.engine, "local", "AgentScript");
+                });
+
+                ui.add_space(10.0);
+                ui.label(egui::RichText::new("AgentScript permissions").size(9.0).strong().color(DIM));
+                let before = prefs.perm_mode.clone();
+                ui.horizontal(|ui| {
+                    let _ = choice(ui, &mut prefs.perm_mode, "sandbox", "Sandbox");
+                    let _ = choice(ui, &mut prefs.perm_mode, "ask", "Ask");
+                    let _ = choice(ui, &mut prefs.perm_mode, "full", "Full");
+                });
+                if prefs.perm_mode != before {
+                    changed = true;
+                }
             });
-            if prefs.work_mode != before {
-                changed = true;
-                match prefs.work_mode.as_str() {
-                    "fast" => {
-                        prefs.thinking_level = "low".to_string();
-                        prefs.extra_thinking = false;
-                    }
-                    "thorough" => {
-                        prefs.thinking_level = "high".to_string();
-                        prefs.extra_thinking = true;
-                    }
-                    _ => {
-                        prefs.thinking_level = "mid".to_string();
-                        prefs.extra_thinking = false;
+
+            left.add_space(9.0);
+            Self::panel().show(left, |ui| {
+                ui.label(egui::RichText::new("Reasoning").size(12.5).strong().color(FG));
+                ui.label(egui::RichText::new("Matches the extension's work-mode and reasoning controls.").size(9.0).color(FAINT));
+                ui.add_space(9.0);
+
+                let before = prefs.work_mode.clone();
+                ui.horizontal(|ui| {
+                    let _ = choice(ui, &mut prefs.work_mode, "fast", "Fast");
+                    let _ = choice(ui, &mut prefs.work_mode, "balanced", "Balanced");
+                    let _ = choice(ui, &mut prefs.work_mode, "thorough", "Thorough");
+                });
+                if prefs.work_mode != before {
+                    changed = true;
+                    match prefs.work_mode.as_str() {
+                        "fast" => {
+                            prefs.thinking_level = "low".to_string();
+                            prefs.extra_thinking = false;
+                        }
+                        "thorough" => {
+                            prefs.thinking_level = "high".to_string();
+                            prefs.extra_thinking = true;
+                        }
+                        _ => {
+                            prefs.thinking_level = "mid".to_string();
+                            prefs.extra_thinking = false;
+                        }
                     }
                 }
-            }
-        });
 
-        ui.add_space(9.0);
-        Self::panel().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.label(egui::RichText::new("Reasoning level").size(11.0).strong().color(FG));
-                    ui.label(egui::RichText::new("Preference passed into the existing provider workflow.").size(9.5).color(FAINT));
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Reasoning level").size(9.5).strong().color(DIM));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let old = prefs.thinking_level.clone();
+                        egui::ComboBox::from_id_salt("reasoning-level")
+                            .selected_text(reasoning_label(&prefs.thinking_level))
+                            .show_ui(ui, |ui| {
+                                for (value, label) in [
+                                    ("default", "Default"),
+                                    ("low", "Low"),
+                                    ("mid", "Medium"),
+                                    ("high", "High"),
+                                    ("max", "Max"),
+                                ] {
+                                    ui.selectable_value(&mut prefs.thinking_level, value.to_string(), label);
+                                }
+                            });
+                        if prefs.thinking_level != old {
+                            changed = true;
+                        }
+                    });
                 });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let old = prefs.thinking_level.clone();
-                    egui::ComboBox::from_id_salt("reasoning-level")
-                        .selected_text(reasoning_label(&prefs.thinking_level))
-                        .show_ui(ui, |ui| {
-                            for (value, label) in [
-                                ("default", "Default"),
-                                ("low", "Low"),
-                                ("mid", "Medium"),
-                                ("high", "High"),
-                                ("max", "Max"),
-                            ] {
-                                ui.selectable_value(&mut prefs.thinking_level, value.to_string(), label);
-                            }
-                        });
-                    if prefs.thinking_level != old {
-                        changed = true;
+
+                ui.add_space(6.0);
+                changed |= toggle_row(ui, "Extra Thinking", "Allow longer reasoning where supported.", &mut prefs.extra_thinking);
+                ui.separator();
+                changed |= toggle_row(ui, "Plan Mode", "Plan before making project changes.", &mut prefs.plan_mode);
+            });
+
+            Self::panel().show(right, |ui| {
+                ui.label(egui::RichText::new("Automation").size(12.5).strong().color(FG));
+                ui.label(egui::RichText::new("Keep PlazCode helpers enabled without changing provider integrations.").size(9.0).color(FAINT));
+                ui.add_space(8.0);
+                changed |= toggle_row(ui, "Forge UI", "UI-building helper behavior.", &mut prefs.forge_mode);
+                ui.separator();
+                changed |= toggle_row(ui, "Auto Fix", "React to supported playtest errors.", &mut prefs.auto_fix);
+                ui.separator();
+                changed |= toggle_row(ui, "Background Mode", "Continue the browser agent loop while unfocused.", &mut prefs.bg_mode);
+                ui.separator();
+                changed |= toggle_row(ui, "Sounds", "Play PlazCode UI feedback sounds.", &mut prefs.sounds);
+            });
+
+            right.add_space(9.0);
+            Self::glow_panel(GREEN).show(right, |ui| {
+                ui.horizontal(|ui| {
+                    Self::dot(ui, GREEN);
+                    ui.label(egui::RichText::new("Autosave active").size(11.0).strong().color(FG));
+                });
+                ui.add_space(5.0);
+                ui.label(egui::RichText::new("Every change is written immediately and restored after reopening PlazCode.").size(9.0).color(DIM));
+                ui.label(egui::RichText::new(format!("{}", self.preferences.path().display())).monospace().size(8.4).color(FAINT));
+            });
+
+            right.add_space(9.0);
+            Self::panel().show(right, |ui| {
+                ui.label(egui::RichText::new("Desktop app").size(12.5).strong().color(FG));
+                ui.label(egui::RichText::new("Closing the window keeps the bridge running. Launch PlazCode.exe again to reopen it.").size(9.0).color(FAINT));
+                ui.add_space(9.0);
+                ui.horizontal(|ui| {
+                    if ui.add(
+                        egui::Button::new(egui::RichText::new("Hide to background").size(9.5).strong().color(INK))
+                            .fill(ACCENT)
+                            .stroke(egui::Stroke::new(1.0, ACCENT_HI))
+                            .rounding(egui::Rounding::same(7.0))
+                    ).clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                        self.shared.log("desktop window hidden — PlazCode is still running in the background");
+                    }
+
+                    if ui.add(
+                        egui::Button::new(egui::RichText::new("Exit PlazCode").size(9.5).strong().color(RED))
+                            .fill(PANEL_HI)
+                            .stroke(egui::Stroke::new(1.0, RED.gamma_multiply(0.6)))
+                            .rounding(egui::Rounding::same(7.0))
+                    ).clicked() {
+                        self.shared.request_quit();
                     }
                 });
             });
-        });
-
-        ui.add_space(9.0);
-        Self::panel().show(ui, |ui| {
-            changed |= toggle_row(ui, "Extra Thinking", "Allow longer reasoning behavior where the provider supports it.", &mut prefs.extra_thinking);
-            ui.separator();
-            changed |= toggle_row(ui, "Plan Mode", "Ask the agent to plan before making project changes.", &mut prefs.plan_mode);
-            ui.separator();
-            changed |= toggle_row(ui, "Forge UI", "Keep PlazCode's UI-building helper behavior enabled.", &mut prefs.forge_mode);
-            ui.separator();
-            changed |= toggle_row(ui, "Auto Fix", "Automatically react to supported playtest errors.", &mut prefs.auto_fix);
-            ui.separator();
-            changed |= toggle_row(ui, "Background Mode", "Allow the agent loop to continue while the tab is not focused.", &mut prefs.bg_mode);
-            ui.separator();
-            changed |= toggle_row(ui, "Sounds", "Play PlazCode UI feedback sounds.", &mut prefs.sounds);
-        });
-
-        ui.add_space(9.0);
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("AgentScript permissions").size(11.0).strong().color(FG));
-            ui.label(egui::RichText::new("Full access expands the local workspace security boundary.").size(9.5).color(FAINT));
-            ui.add_space(7.0);
-            let before = prefs.perm_mode.clone();
-            ui.horizontal(|ui| {
-                let _ = choice(ui, &mut prefs.perm_mode, "sandbox", "Sandbox");
-                let _ = choice(ui, &mut prefs.perm_mode, "ask", "Ask");
-                let _ = choice(ui, &mut prefs.perm_mode, "full", "Full");
-            });
-            if prefs.perm_mode != before {
-                changed = true;
-            }
         });
 
         if changed {
@@ -734,40 +1041,9 @@ impl AgentApp {
                         flag.store(full, Ordering::Relaxed);
                     }
                 }
-                Err(error) => {
-                    self.shared.log(&format!("ERROR desktop settings save failed: {error:#}"));
-                }
+                Err(error) => self.shared.log(&format!("ERROR desktop settings save failed: {error:#}")),
             }
         }
-
-        ui.add_space(9.0);
-        Self::panel().show(ui, |ui| {
-            ui.label(egui::RichText::new("Desktop app").size(11.0).strong().color(FG));
-            ui.label(egui::RichText::new("Closing the window keeps PlazCode and the bridge running in the background. Launch PlazCode.exe again to reopen it.").size(9.5).color(FAINT));
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui.add(
-                    egui::Button::new(egui::RichText::new("Hide to background").size(10.0).strong().color(INK))
-                        .fill(ACCENT)
-                        .stroke(egui::Stroke::new(1.0, ACCENT_HI))
-                        .rounding(egui::Rounding::same(6.0))
-                ).clicked() {
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Visible(false));
-                    self.shared.log("desktop window hidden — PlazCode is still running in the background");
-                }
-                if ui.add(
-                    egui::Button::new(egui::RichText::new("Exit PlazCode").size(10.0).strong().color(RED))
-                        .fill(PANEL_HI)
-                        .stroke(egui::Stroke::new(1.0, RED.gamma_multiply(0.6)))
-                        .rounding(egui::Rounding::same(6.0))
-                ).clicked() {
-                    self.shared.request_quit();
-                }
-            });
-        });
-
-        ui.add_space(10.0);
-        ui.label(egui::RichText::new(format!("Saved locally to {}", self.preferences.path().display())).size(9.0).color(FAINT));
     }
 }
 
@@ -977,6 +1253,7 @@ pub fn run_gui(
                 page: Page::Home,
                 log_filter: 0,
                 tool_filter: String::new(),
+                tool_source: 0,
                 catalog_notice: None,
             }))
         }),
