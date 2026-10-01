@@ -1,5 +1,8 @@
 name: Desktop Revamp Regression
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -59,6 +62,20 @@ jobs:
       - name: Refresh WebView lockfile
         shell: pwsh
         run: cargo generate-lockfile --manifest-path agent/Cargo.toml
+      - name: Commit WebView lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/desktop-revamp'
+        shell: pwsh
+        run: |
+          git add agent/Cargo.lock
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Cargo.lock already current"
+            exit 0
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: lock WebView desktop dependencies"
+          git push origin HEAD:desktop-revamp
       - name: Cargo check
         shell: pwsh
         run: cargo check --locked --manifest-path agent/Cargo.toml
@@ -85,10 +102,10 @@ jobs:
           }
           Copy-Item "agent\target\release\PlazCode.exe" (Join-Path $stage "PlazCode.exe") -Force
           Copy-Item "agent\target\release\PlazCode.exe" (Join-Path $stage "plazcode-agent.exe") -Force
-          tar -a -c -f "PlazCode-1.18.60.zip" -C $env:RUNNER_TEMP PlazCode
+          tar -a -c -f "PlazCode-1.18.61.zip" -C $env:RUNNER_TEMP PlazCode
       - uses: actions/upload-artifact@v4
         with:
-          name: PlazCode-1.18.60
-          path: PlazCode-1.18.60.zip
+          name: PlazCode-1.18.61
+          path: PlazCode-1.18.61.zip
           if-no-files-found: error
           retention-days: 14
