@@ -74,7 +74,7 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
       <div class="title-spacer"></div><div class="title-version">PlazCode __PLAZCODE_VERSION__</div>
       <button class="winbtn" data-ipc="minimize" aria-label="Minimize"><span class="winicon min"></span></button><button class="winbtn" data-ipc="maximize" aria-label="Maximize"><span class="winicon max"></span></button><button class="winbtn close" data-ipc="hide" aria-label="Close"><span class="winicon close"></span></button>
     </div>
-    <div class="content">
+    <div class="content" id="content">
       <div id="fatal" class="fatal"></div>
       <section class="page active" id="page-home">
         <div class="hero">
@@ -242,7 +242,7 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
     Toarray(document.querySelectorAll(".navbtn")).forEach(function (Node) {
       Node.classList.toggle("active", Node.getAttribute("data-page") === Name);
     });
-    var Content = document.querySelector(".content");
+    var Content = Byid("content");
     if (Content) {
       Content.scrollTop = 0;
     }
