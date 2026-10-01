@@ -3,12 +3,19 @@ use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+#[cfg(windows)]
 use std::time::{Duration, Instant};
+#[cfg(windows)]
 use tao::dpi::LogicalSize;
+#[cfg(windows)]
 use tao::event::{Event, WindowEvent};
+#[cfg(windows)]
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
+#[cfg(windows)]
 use tao::platform::run_return::EventLoopExtRunReturn;
+#[cfg(windows)]
 use tao::window::{Icon, WindowBuilder};
+#[cfg(windows)]
 use wry::WebViewBuilder;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -185,6 +192,7 @@ impl UiShared {
     }
 }
 
+#[cfg(windows)]
 #[derive(Clone, Copy, Debug)]
 enum UiEvent {
     Hide,
@@ -194,6 +202,7 @@ enum UiEvent {
     Drag,
 }
 
+#[cfg(windows)]
 fn window_icon() -> anyhow::Result<Icon> {
     let width = 64usize;
     let height = 64usize;
@@ -258,6 +267,7 @@ fn window_icon() -> anyhow::Result<Icon> {
         .map_err(|error| anyhow::anyhow!("invalid PlazCode window icon: {error}"))
 }
 
+#[cfg(windows)]
 fn wait_for_desktop_server() {
     for _ in 0..40 {
         if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
@@ -267,6 +277,7 @@ fn wait_for_desktop_server() {
     }
 }
 
+#[cfg(windows)]
 pub fn run_gui(
     shared: Arc<UiShared>,
     _restart_tx: tokio::sync::mpsc::UnboundedSender<()>,
@@ -353,6 +364,15 @@ pub fn run_gui(
     });
 
     Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn run_gui(
+    _shared: Arc<UiShared>,
+    _restart_tx: tokio::sync::mpsc::UnboundedSender<()>,
+    _preferences: Arc<preferences::PreferencesStore>,
+) -> anyhow::Result<()> {
+    anyhow::bail!("PlazCode desktop UI currently requires Windows")
 }
 
 #[cfg(test)]
