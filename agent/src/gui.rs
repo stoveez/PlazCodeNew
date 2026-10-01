@@ -1138,6 +1138,32 @@ fn badge(ui: &mut egui::Ui, key: &str, value: &str) {
         });
 }
 
+fn tool_source_style(source: &str) -> (&'static str, egui::Color32) {
+    if source == "Roblox Studio" {
+        ("RS", egui::Color32::from_rgb(74, 157, 255))
+    } else if source == "AgentScript" {
+        ("AS", egui::Color32::from_rgb(161, 110, 255))
+    } else if source.starts_with("MCP / ") {
+        ("MCP", GREEN)
+    } else {
+        ("PC", ACCENT)
+    }
+}
+
+fn status_pill(ui: &mut egui::Ui, label: &str, color: egui::Color32) {
+    egui::Frame::none()
+        .fill(egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 24))
+        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.65)))
+        .rounding(egui::Rounding::same(8.0))
+        .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                AgentApp::dot(ui, color);
+                ui.label(egui::RichText::new(label).size(8.8).strong().color(color));
+            });
+        });
+}
+
 fn reasoning_label(value: &str) -> &'static str {
     match value {
         "low" => "Low",
@@ -1234,8 +1260,8 @@ pub fn run_gui(
 ) -> eframe::Result<()> {
     let options = NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1040.0, 700.0])
-            .with_min_inner_size([760.0, 520.0])
+            .with_inner_size([1220.0, 780.0])
+            .with_min_inner_size([900.0, 620.0])
             .with_icon(window_icon())
             .with_title("PlazCode"),
         ..Default::default()
