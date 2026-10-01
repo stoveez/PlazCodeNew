@@ -1,6 +1,8 @@
-PlazCode 1.18.58
+PlazCode 1.18.59
 
 Changes:
+- Fix startup after updating from an older hidden/background PlazCode instance. A new build now reuses only an already-running instance with the exact same desktop version; older background versions are replaced so the new window can open normally.
+- Add regression coverage for same-version reopen versus older-version replacement.
 - Correct the desktop redesign so the implemented app closely follows the approved PlazCode previews instead of only borrowing their colors.
 - Add custom-painted orange glow layers, navy depth, preview-style navigation selection, a branded PlazCode mark, and the large Welcome to PlazCode hero treatment.
 - Increase the dashboard proportions and card hierarchy to match the approved layout more closely while keeping the decorative mountain/landscape artwork out.
@@ -31,13 +33,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.58.zip.
+- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.59.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.58.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.59.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -58,5 +60,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.58.zip.
+- Distribute the complete PlazCode-1.18.59.zip.
 - Keep the extension and desktop app from the same build together.
