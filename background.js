@@ -73,24 +73,27 @@ const DESKTOP_PREF_KEYS = [
 let desktopSyncApplying = false;
 let desktopSyncPushTimer = null;
 
+async function applyDesktopPreferences(remote) {
+  if (!remote || typeof remote !== "object") return false;
+  const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
+  const updates = {};
+  for (const key of DESKTOP_PREF_KEYS) {
+    if (!(key in remote)) continue;
+    if (JSON.stringify(local[key]) !== JSON.stringify(remote[key])) updates[key] = remote[key];
+  }
+  if (Object.keys(updates).length) {
+    desktopSyncApplying = true;
+    try { await chrome.storage.local.set(updates); }
+    finally { desktopSyncApplying = false; }
+  }
+  return true;
+}
+
 async function pullDesktopPreferences() {
   try {
     const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET" });
     if (!response.ok) return false;
-    const remote = await response.json();
-    if (!remote || typeof remote !== "object") return false;
-    const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
-    const updates = {};
-    for (const key of DESKTOP_PREF_KEYS) {
-      if (!(key in remote)) continue;
-      if (JSON.stringify(local[key]) !== JSON.stringify(remote[key])) updates[key] = remote[key];
-    }
-    if (Object.keys(updates).length) {
-      desktopSyncApplying = true;
-      try { await chrome.storage.local.set(updates); }
-      finally { desktopSyncApplying = false; }
-    }
-    return true;
+    return await applyDesktopPreferences(await response.json());
   } catch {
     return false;
   }
@@ -112,11 +115,22 @@ async function pushDesktopPreferences() {
 
 async function initialDesktopPreferencesSync() {
   try {
+    const response = await bridgeFetch("http://127.0.0.1:3000/api/preferences", { method: "GET" });
+    if (!response.ok) return false;
+    const remote = await response.json();
+    if (remote && remote._plazcodePersisted === true) {
+      return await applyDesktopPreferences(remote);
+    }
+
     const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
     const hasExisting = DESKTOP_PREF_KEYS.some((key) => local[key] !== undefined);
     if (hasExisting) return await pushDesktopPreferences();
-  } catch {}
-  return await pullDesktopPreferences();
+
+    if (!(await applyDesktopPreferences(remote))) return false;
+    return await pushDesktopPreferences();
+  } catch {
+    return false;
+  }
 }
 
 function scheduleDesktopPreferencesPush() {
