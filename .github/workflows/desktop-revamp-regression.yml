@@ -1,0 +1,54 @@
+name: Desktop Revamp Regression
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check extension
+        shell: bash
+        run: |
+          set -e
+          node --check background.js
+          node --check popup.js
+          for f in core/*.js providers/*.js; do node --check "$f"; done
+      - name: Provider and desktop regression guard
+        run: node test-desktop-regression.js
+      - name: Existing parser regression
+        run: node test-parser.js
+      - name: Existing ChatGPT regression
+        run: node test-chatgpt.js
+      - name: Existing Claude regression
+        run: node test-claude.js
+      - name: Existing skills regression
+        run: node test-skills.js
+      - name: Existing animation regression
+        run: node test-animlib.js
+      - name: Existing version regressions
+        shell: bash
+        run: |
+          set -e
+          node test-v111.js
+          node test-v112.js
+          node test-v115.js
+          node test-v118.js
+
+  agent:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cargo check
+        shell: pwsh
+        run: cargo check --locked --manifest-path agent/Cargo.toml
+      - name: Cargo test
+        shell: pwsh
+        run: cargo test --locked --manifest-path agent/Cargo.toml
