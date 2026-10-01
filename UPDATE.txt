@@ -1,44 +1,52 @@
-PlazCode 1.18.54
+PlazCode 1.18.56
 
 Changes:
-- Turn the native PlazCode agent window into a desktop control center with Home, Tools, MCP Servers, Console and Settings pages.
-- Keep the existing browser extension and every provider adapter as the AI-facing layer. The desktop app does not replace or rewrite provider DOM integrations.
-- Synchronize desktop settings with the extension through the existing authenticated 127.0.0.1 bridge. Existing extension settings are preserved on the first desktop sync.
-- Mirror Roblox/AgentScript engine, Fast/Balanced/Thorough work mode, Sandbox/Ask/Full permissions, reasoning level, Extra Thinking, Plan Mode, Forge UI, Auto Fix, Background Mode and Sounds in the desktop app.
-- Add a live desktop tool browser and MCP server catalog.
-- Add optional MCP catalog entries for Blender, Context7, Fetch, Git, Memory and Sequential Thinking. Roblox Studio remains the protected primary MCP server.
-- Add authenticated custom MCP add/remove support to the native bridge. Add-on tool names are isolated with a server prefix so they cannot collide with Roblox Studio tools.
-- Keep the existing extension/background message contract intact. Every existing provider/core JS file is hash-protected by the desktop regression suite.
-- Restore the source layout under core/, providers/, agent/ and ui/ and remove the accidental flattened source duplicates.
-- Both extension and rebuilt agent report 1.18.54.
+- Rename the obvious Windows desktop launcher to PlazCode.exe. plazcode-agent.exe is still included as a compatibility alias.
+- Redesign the native desktop control center around the extension's dark navy + warm gold PlazCode theme.
+- Closing the desktop window now hides it while the bridge keeps running in the background. Launching PlazCode.exe again reopens the existing background instance instead of starting a second bridge.
+- Add an explicit Exit PlazCode action for actually shutting the background process down.
+- Desktop settings autosave immediately to plazcode-settings.json and restore after hiding, exiting, reopening, or rebooting.
+- Existing saved desktop settings are authoritative after reopen. The browser extension only seeds the desktop settings file on the first run when no saved desktop settings exist yet.
+- Keep desktop and extension settings synchronized through the authenticated loopback bridge.
+- Make the desktop Tools page source-aware and complete: Roblox Studio tools, AgentScript workspace tools, optional MCP add-ons, and browser-side PlazCode utility/skill/motion tools are merged into one searchable catalog.
+- Keep the MCP server catalog with optional Blender, Context7, Fetch, Git, Memory, and Sequential Thinking entries. Roblox Studio remains the protected primary server.
+- Reduce long-chat CPU/DOM churn by throttling diagnostic DOM mirroring, lowering idle camouflage sweep frequency, and replacing the always-on high-frequency bar layout loop with adaptive scheduling.
+- Fix staged-media memory retention by revoking blob URLs when media is removed, cleared, or the page unloads.
+- Preserve every provider adapter and the existing background/provider message contract. Notion remains the known live-site exception from the previous baseline.
 
 Regression validation:
-- JavaScript syntax check runs for background.js, popup.js and every core/provider JavaScript file.
-- Provider/core integrity guard verifies the existing browser provider code was not changed by the desktop work.
-- Existing parser, ChatGPT, Claude, skills, animation and version regression suites run in GitHub Actions.
+- JavaScript syntax checks run for background.js, popup.js, core/*.js and providers/*.js.
+- Provider adapters remain hash-protected; the intentional core/main.js performance update has its own updated baseline hash.
+- Existing parser, ChatGPT, Claude, skills, animation, v1.11, v1.12, v1.15, and v1.18 regression tests run in GitHub Actions.
+- Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
-- The shipping workflow builds the Windows release agent and creates PlazCode-1.18.54-SHARE.zip.
-- Notion remains the known live-site exception from the 1.18.53 baseline. Its provider adapter is preserved and hash-protected; this release does not claim Notion is fixed.
-- Live browser smoke testing is still required before promoting the draft build to final because GitHub Actions cannot drive authenticated AI websites in your Chrome profile.
+- Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
+- The Windows workflow builds PlazCode.exe and packages PlazCode-1.18.56-SHARE.zip.
+- Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
-Install:
-1. Close the old PlazCode agent.
-2. Keep plazcode-agent.old.exe as your rollback copy.
-3. Extract PlazCode-1.18.54-SHARE.zip and replace the previous PlazCode folder.
+Install / test:
+1. Close the old PlazCode process completely before replacing files.
+2. Keep your old plazcode-agent.exe as a rollback copy if desired.
+3. Extract PlazCode-1.18.56-SHARE.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
-5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves old content scripts running.
-6. Start the new plazcode-agent.exe. The PlazCode desktop control center opens and automatic extension pairing continues to use the existing local pairing flow.
-7. If you enable an optional MCP server, make sure its launcher command (for example npx or uvx) is installed on the PC.
+5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
+6. Run PlazCode.exe.
+7. Change several desktop settings, close the window, reopen PlazCode.exe, and verify the settings remain unchanged.
+8. Open Tools and verify RS, AS, PC, and MCP source labels appear as those tool sources become available.
+9. Test the currently working AI websites in a normal chat and a long existing chat. Notion remains the known exception for this release.
+
+Background behavior:
+- X / Hide: hides the desktop UI but leaves the PlazCode bridge running.
+- Launch PlazCode.exe again: reopens the already-running desktop instance.
+- Settings > Exit PlazCode: fully exits the process.
 
 Security boundary:
-- Command requests still require the local pairing key.
-- Desktop settings and MCP catalog endpoints use the same authenticated loopback API as the existing extension bridge.
-- The pairing endpoint keeps the existing extension-ID/content-type/origin validation.
-- Optional MCP servers are disabled until the user explicitly enables them.
-- The Roblox Studio MCP entry remains protected and cannot be removed through the catalog.
-- The key stays outside the release directory and is never included in the ZIP.
-- No additional Chrome permissions were added for the desktop app.
+- Local command and desktop endpoints still require the pairing key.
+- Optional MCP servers remain disabled until explicitly enabled.
+- Roblox Studio MCP cannot be removed from the catalog.
+- The pairing key stays outside the release ZIP.
+- No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.54-SHARE.zip produced by the release workflow.
-- Do not distribute only changed files: the extension and agent versions must stay matched.
+- Distribute the complete PlazCode-1.18.56-SHARE.zip.
+- Keep the extension and desktop app from the same build together.
