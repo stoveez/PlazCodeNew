@@ -398,6 +398,10 @@ fn reclaim_port(port: u16) -> anyhow::Result<()> {
 #[cfg(not(windows))]
 fn reclaim_port(_port: u16) -> anyhow::Result<()> { Ok(()) }
 
+fn should_reuse_running_version(running_version: &str) -> bool {
+    running_version == env!("CARGO_PKG_VERSION")
+}
+
 async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
     if !addr.ip().is_loopback() {
         return false;
@@ -425,7 +429,7 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
         return false;
     };
 
-    if running_version != env!("CARGO_PKG_VERSION") {
+    if !should_reuse_running_version(&running_version) {
         info!(
             "older PlazCode instance v{} detected while launching v{} — replacing it",
             running_version,
@@ -443,6 +447,22 @@ async fn focus_existing(addr: SocketAddr, pairing_key: &str) -> bool {
 
 fn env_first(keys: &[&str]) -> Option<String> {
     keys.iter().find_map(|k| std::env::var(k).ok().filter(|s| !s.trim().is_empty()))
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+
+    #[test]
+    fn same_version_reuses_existing_background_instance() {
+        assert!(should_reuse_running_version(env!("CARGO_PKG_VERSION")));
+    }
+
+    #[test]
+    fn older_version_is_replaced_instead_of_reused() {
+        assert!(!should_reuse_running_version("1.18.58"));
+        assert!(!should_reuse_running_version("0.0.1"));
+    }
 }
 
 fn main() {
