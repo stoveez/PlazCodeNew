@@ -1,4 +1,4 @@
-PlazCode 1.18.63
+PlazCode 1.18.64
 
 Changes:
 - Load the desktop HTML/CSS directly from the packaged executable through a dedicated plazcode:// custom WebView protocol instead of navigating the WebView to http://127.0.0.1:3000/desktop. The PlazCode window now renders even if the local bridge is still starting, so the app cannot fall through to an Edge ERR_CONNECTION_REFUSED page.
@@ -49,13 +49,13 @@ Regression validation:
 - Desktop regression checks validate the settings relay, browser-tool relay, performance guards, and version.
 - Rust cargo check and cargo test run on Windows.
 - Rust tests include settings persistence across process reopen and normalization of invalid saved choices.
-- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.63.zip.
+- The Windows workflow builds PlazCode.exe, embeds the branded Windows icon, and packages PlazCode-1.18.64.zip.
 - Live authenticated provider smoke tests are still required before merging the draft branch because GitHub Actions cannot drive the user's logged-in AI website sessions.
 
 Install / test:
 1. Close the old PlazCode process completely before replacing files.
 2. Keep your old plazcode-agent.exe as a rollback copy if desired.
-3. Extract PlazCode-1.18.63.zip and replace the previous PlazCode folder.
+3. Extract PlazCode-1.18.64.zip and replace the previous PlazCode folder.
 4. Reload the unpacked extension in chrome://extensions.
 5. Refresh every already-open supported AI chat tab. Reloading the extension alone leaves the old content scripts running.
 6. Run PlazCode.exe.
@@ -76,5 +76,5 @@ Security boundary:
 - No new Chrome permissions were added.
 
 Distribution:
-- Distribute the complete PlazCode-1.18.63.zip.
+- Distribute the complete PlazCode-1.18.64.zip.
 - Keep the extension and desktop app from the same build together.
