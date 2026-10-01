@@ -110,6 +110,15 @@ async function pushDesktopPreferences() {
   }
 }
 
+async function initialDesktopPreferencesSync() {
+  try {
+    const local = await chrome.storage.local.get(DESKTOP_PREF_KEYS);
+    const hasExisting = DESKTOP_PREF_KEYS.some((key) => local[key] !== undefined);
+    if (hasExisting) return await pushDesktopPreferences();
+  } catch {}
+  return await pullDesktopPreferences();
+}
+
 function scheduleDesktopPreferencesPush() {
   clearTimeout(desktopSyncPushTimer);
   desktopSyncPushTimer = setTimeout(() => { pushDesktopPreferences(); }, 250);
@@ -146,7 +155,7 @@ chrome.storage?.local.get(ENGINE_KEY, (o) => {
     if (r.ok) {
       rustMode = true;
       log("Rust agent detected on 3000 — HTTP pipe enabled (CORS bypass via background)");
-      await pullDesktopPreferences();
+      await initialDesktopPreferencesSync();
     }
   } catch {}
 })();
