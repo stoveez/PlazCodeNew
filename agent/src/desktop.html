@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlazCode</title>
+<style>
+:root{
+  --bg:#050b14;--bg2:#07101d;--panel:#0a1423;--panel2:#0d1a2d;--line:#21334d;
+  --text:#f5f8ff;--dim:#aabbd2;--muted:#657a97;--orange:#ff9226;--orange2:#ffc052;
+  --green:#31e0a4;--blue:#4ba0ff;--purple:#a06aff;--red:#ff696c;--amber:#ffb33f;
+  --shadow:0 24px 60px rgba(0,0,0,.38);--r:18px
+}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+button,input,select{font:inherit}.app{display:grid;grid-template-columns:238px 1fr;width:100%;height:100%;background:
+radial-gradient(circle at 72% 0%,rgba(255,146,38,.08),transparent 30%),
+radial-gradient(circle at 14% 92%,rgba(255,111,27,.055),transparent 26%),var(--bg)}
+.sidebar{position:relative;background:linear-gradient(180deg,#07111f,#050c16 82%);border-right:1px solid #203149;padding:20px 14px 16px;display:flex;flex-direction:column;min-width:0}
+.brand{display:flex;align-items:center;gap:12px;padding:2px 8px 20px}.brand-mark{width:50px;height:50px;border-radius:14px;border:1px solid rgba(255,164,51,.75);background:linear-gradient(145deg,#0b1a2c,#09111e);box-shadow:0 0 20px rgba(255,141,31,.18),inset 0 0 16px rgba(255,150,40,.05);display:grid;place-items:center}
+.brand-word{font-size:22px;font-weight:800;letter-spacing:-.8px;white-space:nowrap}.brand-word .code{color:var(--orange2)}.version{font-size:11px;color:var(--muted);margin-top:3px}
+.logo-svg{width:72%;height:72%;filter:drop-shadow(0 0 7px rgba(255,164,52,.35))}
+.nav{display:flex;flex-direction:column;gap:8px;margin-top:10px}.navbtn{height:54px;border:1px solid transparent;background:transparent;color:#aebed4;border-radius:12px;padding:0 14px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.16s ease;text-align:left}
+.navbtn:hover{background:#0d1a2d;color:#fff;border-color:#243a58}.navbtn.active{color:#fff;background:linear-gradient(90deg,rgba(255,146,38,.22),rgba(255,146,38,.08));border-color:rgba(255,146,38,.6);box-shadow:0 0 24px rgba(255,137,31,.13),inset 3px 0 0 var(--orange)}
+.navicon{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.navbtn.active .navicon{color:var(--orange2);filter:drop-shadow(0 0 7px rgba(255,169,63,.45))}
+.side-status{margin-top:auto;border:1px solid #263852;background:linear-gradient(145deg,#0b1727,#08111e);border-radius:14px;padding:13px 14px;box-shadow:0 0 22px rgba(0,0,0,.25)}.status-row{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700}.dot{width:9px;height:9px;border-radius:50%;background:#677995;box-shadow:0 0 0 4px rgba(103,121,149,.08)}.dot.on{background:var(--green);box-shadow:0 0 12px rgba(49,224,164,.6)}.side-sub{font-size:10px;color:var(--muted);margin:6px 0 0 18px}
+.shell{min-width:0;display:flex;flex-direction:column;height:100%}.titlebar{height:54px;display:flex;align-items:center;padding:0 15px 0 26px;border-bottom:1px solid #17263b;background:rgba(4,11,20,.78);backdrop-filter:blur(18px);-webkit-app-region:drag;user-select:none}
+.title-spacer{flex:1}.title-version{font-size:11px;color:var(--muted);margin-right:16px}.winbtn{width:40px;height:32px;border:0;background:transparent;color:#b5c2d4;border-radius:8px;cursor:pointer;-webkit-app-region:no-drag}.winbtn:hover{background:#122137;color:#fff}.winbtn.close:hover{background:#a9353a;color:#fff}
+.content{flex:1;overflow:auto;padding:22px 26px 28px;scrollbar-color:#263a56 transparent}.page{display:none;max-width:1520px;margin:0 auto}.page.active{display:block}
+.hero{position:relative;min-height:196px;border:1px solid rgba(255,149,40,.7);border-radius:20px;background:
+linear-gradient(110deg,rgba(255,146,38,.07),transparent 35%),
+radial-gradient(circle at 84% 50%,rgba(255,146,38,.12),transparent 26%),
+linear-gradient(145deg,#081525,#07111f);
+padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inset,0 0 34px rgba(255,126,18,.09),var(--shadow)}
+.hero:before,.hero:after{content:"";position:absolute;height:1px;background:linear-gradient(90deg,transparent,rgba(255,158,47,.36),transparent);transform:rotate(-38deg);right:-70px;width:360px}.hero:before{top:30px}.hero:after{top:72px}
+.hero-title{font-size:29px;font-weight:500;color:#eaf0fa;letter-spacing:-.5px}.hero-name{font-size:62px;line-height:1;font-weight:850;letter-spacing:-2.8px;margin-top:4px}.hero-name span{background:linear-gradient(180deg,#ffd98a,#ff982b);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 30px rgba(255,146,38,.09)}
+.hero-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.pill{border:1px solid #28405f;background:#0d1d31;color:#a7b8cf;border-radius:8px;padding:7px 10px;font-size:10px}.pill b{color:#fff;margin-left:6px}
+.hero-logo{position:absolute;right:54px;top:25px;width:176px;height:145px;display:grid;place-items:center;filter:drop-shadow(0 0 22px rgba(255,145,38,.28))}.hero-logo:before{content:"";position:absolute;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle,rgba(255,149,40,.18),rgba(255,113,21,.05) 58%,transparent 70%);box-shadow:0 0 45px rgba(255,119,18,.14)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}.stat{position:relative;min-height:148px;border-radius:18px;padding:20px 20px 18px;background:linear-gradient(145deg,#0b1727,#08111f);border:1px solid #2a3c57;overflow:hidden;box-shadow:var(--shadow)}
+.stat:after{content:"";position:absolute;inset:auto 12% -1px;height:1px;background:linear-gradient(90deg,transparent,var(--tone),transparent);box-shadow:0 0 15px var(--tone)}.stat[data-tone=green]{--tone:var(--green);border-color:rgba(49,224,164,.47)}.stat[data-tone=amber]{--tone:var(--amber);border-color:rgba(255,179,63,.4)}.stat[data-tone=blue]{--tone:var(--blue);border-color:rgba(75,160,255,.45)}.stat[data-tone=purple]{--tone:var(--purple);border-color:rgba(160,106,255,.45)}
+.stat-head{display:flex;align-items:center;gap:9px;color:#c2d0e2;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}.stat-val{font-size:29px;font-weight:800;margin-top:20px}.stat-sub{font-size:11px;line-height:1.45;color:var(--muted);margin-top:7px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:16px;margin-top:16px}.panel{border:1px solid #2a3b56;border-radius:18px;background:linear-gradient(145deg,#0a1525,#08111e);padding:20px;box-shadow:var(--shadow)}.panel-head{display:flex;align-items:center;margin-bottom:16px}.panel-title{font-size:17px;font-weight:800}.panel-note{margin-left:auto;color:var(--muted);font-size:10px}.clearbtn,.softbtn{border:1px solid #2b405f;background:#0e1c30;color:#b8c6da;border-radius:8px;padding:7px 10px;font-size:10px;cursor:pointer}.clearbtn:hover,.softbtn:hover{border-color:#3d577a;color:#fff}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.action{min-height:84px;border:1px solid #29415f;border-radius:13px;background:linear-gradient(145deg,#0d1c31,#091522);padding:15px 16px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:14px}.action:hover{border-color:rgba(255,151,40,.85);box-shadow:0 0 26px rgba(255,135,24,.13);transform:translateY(-1px)}.action-ico{width:44px;height:44px;border:1px solid rgba(255,157,48,.55);border-radius:11px;display:grid;place-items:center;color:var(--orange2);background:rgba(255,146,38,.07);font-size:20px}.action strong{font-size:13px}.action small{display:block;margin-top:6px;color:#8094af;font-size:10px}.chev{margin-left:auto;color:#dce7f6;font-size:22px}
+.activity{display:flex;flex-direction:column;gap:0}.activity-row{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:42px;border-top:1px solid #172841;font-size:10px;color:#b6c4d7}.activity-row:first-child{border-top:0}.activity-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace}.activity-time{color:#667b96}
+.page-head{display:flex;align-items:end;gap:14px;margin-bottom:16px}.page-title{font-size:34px;font-weight:850;letter-spacing:-1px}.page-sub{font-size:11px;color:var(--muted);margin-bottom:5px}.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;border:1px solid #243752;background:#091522;padding:10px;border-radius:14px}.search{flex:1;height:38px;border:1px solid #2d4362;border-radius:9px;background:#07111e;color:#fff;padding:0 13px;outline:0}.search:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,146,38,.09)}.filters{display:flex;gap:7px}.filter{border:1px solid #2b405d;background:#0b192b;color:#9db0ca;border-radius:8px;padding:8px 11px;font-size:10px;cursor:pointer}.filter.active{color:#07101d;border-color:#ffd181;background:linear-gradient(180deg,#ffc25d,#ff9329);font-weight:800}
+.cardgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.toolcard,.mcpcard{min-height:105px;border:1px solid #263c59;background:linear-gradient(145deg,#0b1727,#08111e);border-radius:14px;padding:16px;box-shadow:0 14px 34px rgba(0,0,0,.22)}.tooltop,.mcptop{display:flex;align-items:center;gap:9px}.tag{border-radius:6px;padding:4px 7px;font-size:8px;font-weight:900;letter-spacing:.5px}.tag.rs{color:#7dbbff;background:rgba(75,160,255,.12);border:1px solid rgba(75,160,255,.45)}.tag.as{color:#c79bff;background:rgba(160,106,255,.12);border:1px solid rgba(160,106,255,.45)}.tag.pc{color:#ffc56c;background:rgba(255,146,38,.11);border:1px solid rgba(255,146,38,.45)}.tag.mcp{color:#72edc1;background:rgba(49,224,164,.11);border:1px solid rgba(49,224,164,.45)}.toolname{min-width:0;font-family:Consolas,monospace;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toolsource,.mcpdesc{font-size:10px;color:#758aa7;margin-top:12px;line-height:1.5}.available{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(49,224,164,.55)}
+.mcpcard{min-height:170px}.mcpname{font-size:15px;font-weight:800}.mcpstate{margin-left:auto;font-size:9px;border-radius:10px;padding:5px 8px;border:1px solid #315172;color:#8fa9c7}.mcpstate.on{color:#67e9bb;border-color:rgba(49,224,164,.5);background:rgba(49,224,164,.06)}.mcpcommand{font:10px Consolas,monospace;color:#6f85a2;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mcpactions{margin-top:14px;display:flex;gap:8px}.accentbtn{border:1px solid #ffc05b;background:linear-gradient(180deg,#ffc15d,#ff9127);color:#09111d;border-radius:8px;padding:7px 11px;font-size:10px;font-weight:800;cursor:pointer}.dangerbtn{border:1px solid rgba(255,105,108,.45);background:rgba(255,105,108,.06);color:#ff8587;border-radius:8px;padding:7px 11px;font-size:10px;cursor:pointer}
+.terminal{height:calc(100vh - 190px);min-height:430px;border:1px solid #263d5a;border-radius:16px;background:#030914;overflow:auto;padding:16px;font:11px/1.55 Consolas,monospace;box-shadow:inset 0 0 40px rgba(0,0,0,.24),var(--shadow)}.logline{white-space:pre-wrap;word-break:break-word;color:#afbed3}.logline.warn{color:#ffc35e}.logline.error{color:#ff8588}
+.settingsgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.settingcard{border:1px solid #293d59;background:linear-gradient(145deg,#0b1727,#08111e);border-radius:15px;padding:18px}.settingcard h3{margin:0;font-size:15px}.settingcard p{margin:6px 0 14px;color:#7086a4;font-size:10px;line-height:1.5}.settingrow{display:flex;align-items:center;min-height:44px;border-top:1px solid #172842}.settingrow:first-of-type{border-top:0}.settingrow label{font-size:11px;color:#c5d1e1}.settingrow select{margin-left:auto;background:#091522;border:1px solid #2c4260;color:#fff;border-radius:8px;padding:7px 9px}.toggle{margin-left:auto;width:38px;height:21px;border-radius:20px;border:1px solid #354b67;background:#111e30;position:relative;cursor:pointer}.toggle:after{content:"";position:absolute;width:15px;height:15px;top:2px;left:3px;background:#8495aa;border-radius:50%;transition:.15s}.toggle.on{background:rgba(255,146,38,.22);border-color:#ff9c35}.toggle.on:after{left:18px;background:var(--orange2);box-shadow:0 0 9px rgba(255,174,60,.5)}
+.fatal{display:none;margin-bottom:13px;padding:11px 13px;border:1px solid rgba(255,105,108,.55);border-radius:10px;background:rgba(255,105,108,.07);color:#ff9a9c;font-size:11px}.empty{padding:30px;text-align:center;color:#657b97;border:1px dashed #28405e;border-radius:14px}
+@media(max-width:1100px){.app{grid-template-columns:205px 1fr}.stats{grid-template-columns:repeat(2,1fr)}.cardgrid{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.hero-logo{right:25px;opacity:.75}.settingsgrid{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:76px 1fr}.brand-copy,.navlabel,.side-status{display:none}.brand{justify-content:center;padding-inline:0}.navbtn{justify-content:center;padding:0}.navbtn.active{box-shadow:inset 3px 0 0 var(--orange)}.content{padding:16px}.hero-logo{display:none}.hero-name{font-size:44px}.stats,.cardgrid,.actions{grid-template-columns:1fr}.title-version{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg class="logo-svg" viewBox="0 0 100 100"><g fill="none" stroke="#ffad3e" stroke-width="9" stroke-linecap="round"><path d="M27 18v42M27 18h31M27 42h29"/><path d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path d="M31 70 18 91M48 70 35 91"/></g></svg>
+      </div>
+      <div class="brand-copy"><div class="brand-word">Plaz<span class="code">Code</span></div><div class="version">v__PLAZCODE_VERSION__</div></div>
+    </div>
+    <nav class="nav">
+      <button class="navbtn active" data-page="home"><svg class="navicon" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg><span class="navlabel">Home</span></button>
+      <button class="navbtn" data-page="tools"><svg class="navicon" viewBox="0 0 24 24"><path d="m14.7 6.3 3-3a4 4 0 0 1-5.5 5.5l-7.7 7.7a2.1 2.1 0 0 0 3 3l7.7-7.7a4 4 0 0 1 5.5-5.5l-3 3"/></svg><span class="navlabel">Tools</span></button>
+      <button class="navbtn" data-page="mcp"><svg class="navicon" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="6" cy="5" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="9" cy="19" r="1"/></svg><span class="navlabel">MCP Servers</span></button>
+      <button class="navbtn" data-page="terminal"><svg class="navicon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg><span class="navlabel">Terminal</span></button>
+      <button class="navbtn" data-page="settings"><svg class="navicon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.06.06-2.12 2.12-.06-.06a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.64V21h-3v-.08A1.8 1.8 0 0 0 10.4 19a1.8 1.8 0 0 0-2 .36l-.06.06-2.12-2.12.06-.06a1.8 1.8 0 0 0 .36-2A1.8 1.8 0 0 0 5 14H5v-3h.08A1.8 1.8 0 0 0 7 9.6a1.8 1.8 0 0 0-.36-2l-.06-.06L8.7 5.42l.06.06a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 12 4.2V4h3v.08A1.8 1.8 0 0 0 16.4 6a1.8 1.8 0 0 0 2-.36l.06-.06 2.12 2.12-.06.06a1.8 1.8 0 0 0-.36 2A1.8 1.8 0 0 0 21 11v3h-.08A1.8 1.8 0 0 0 19.4 15Z"/></svg><span class="navlabel">Settings</span></button>
+    </nav>
+    <div class="side-status"><div class="status-row"><span id="sideDot" class="dot"></span><span id="sideStatus">Bridge waiting</span></div><div class="side-sub">127.0.0.1:3000</div></div>
+  </aside>
+  <main class="shell">
+    <div class="titlebar" id="dragbar">
+      <div class="title-spacer"></div><div class="title-version">PlazCode __PLAZCODE_VERSION__</div>
+      <button class="winbtn" data-ipc="minimize">—</button><button class="winbtn" data-ipc="maximize">□</button><button class="winbtn close" data-ipc="hide">×</button>
+    </div>
+    <div class="content">
+      <div id="fatal" class="fatal"></div>
+      <section class="page active" id="page-home">
+        <div class="hero">
+          <div class="hero-title">Welcome to</div><div class="hero-name">Plaz<span>Code</span></div>
+          <div class="hero-pills"><div class="pill">Browser AI <b id="heroBrowser">waiting</b></div><div class="pill">Bridge <b>127.0.0.1</b></div><div class="pill">Desktop <b>background ready</b></div></div>
+          <div class="hero-logo"><svg class="logo-svg" viewBox="0 0 100 100"><g fill="none" stroke="#ffc052" stroke-width="8" stroke-linecap="round"><path d="M27 18v42M27 18h31M27 42h29"/><path d="M56 18c20 0 26 9 26 21S75 60 56 60"/><path d="M31 70 18 91M48 70 35 91"/></g></svg></div>
+        </div>
+        <div class="stats">
+          <div class="stat" data-tone="green"><div class="stat-head"><span id="bridgeDot" class="dot"></span>Bridge</div><div id="bridgeVal" class="stat-val">Waiting</div><div class="stat-sub">Browser extension link</div></div>
+          <div class="stat" data-tone="amber"><div class="stat-head"><span id="studioDot" class="dot"></span>Roblox Studio</div><div id="studioVal" class="stat-val">Offline</div><div class="stat-sub">Primary Studio MCP</div></div>
+          <div class="stat" data-tone="blue"><div class="stat-head"><span class="dot on" style="background:var(--blue)"></span>Tools</div><div id="toolCount" class="stat-val">0</div><div class="stat-sub">Live tool catalog</div></div>
+          <div class="stat" data-tone="purple"><div class="stat-head"><span class="dot on" style="background:var(--purple)"></span>Workspace</div><div id="workspaceVal" class="stat-val">Off</div><div id="workspaceSub" class="stat-sub">AgentScript files</div></div>
+        </div>
+        <div class="grid2">
+          <div class="panel"><div class="panel-head"><div class="panel-title">⚡ Quick Actions</div><div class="panel-note">real PlazCode controls</div></div>
+            <div class="actions">
+              <div class="action" data-go="tools"><div class="action-ico">⌘</div><div><strong>Browse Tools</strong><small>See every live PlazCode tool</small></div><div class="chev">›</div></div>
+              <div class="action" data-go="mcp"><div class="action-ico">≋</div><div><strong>MCP Servers</strong><small>Manage optional integrations</small></div><div class="chev">›</div></div>
+              <div class="action" data-go="terminal"><div class="action-ico">&gt;_</div><div><strong>Open Terminal</strong><small>Inspect bridge and MCP logs</small></div><div class="chev">›</div></div>
+              <div class="action" data-go="settings"><div class="action-ico">⚙</div><div><strong>Settings</strong><small>Adjust synced preferences</small></div><div class="chev">›</div></div>
+            </div>
+          </div>
+          <div class="panel"><div class="panel-head"><div class="panel-title">◷ Recent Activity</div><button class="clearbtn" id="clearHome">Clear</button></div><div id="recent" class="activity"></div></div>
+        </div>
+      </section>
+      <section class="page" id="page-tools">
+        <div class="page-head"><div><div class="page-title">Tools</div><div class="page-sub">Every currently usable PlazCode tool, grouped by live source.</div></div></div>
+        <div class="toolbar"><input id="toolSearch" class="search" placeholder="Search tools or sources..."><div id="toolFilters" class="filters"></div></div>
+        <div id="toolsGrid" class="cardgrid"></div>
+      </section>
+      <section class="page" id="page-mcp">
+        <div class="page-head"><div><div class="page-title">MCP Servers</div><div class="page-sub">Optional integrations plus the protected Roblox Studio primary server.</div></div></div>
+        <div id="mcpGrid" class="cardgrid"></div>
+      </section>
+      <section class="page" id="page-terminal">
+        <div class="page-head"><div><div class="page-title">Terminal</div><div class="page-sub">Live bridge, Studio, MCP, and AgentScript logs.</div></div><div style="margin-left:auto;display:flex;gap:8px"><button class="softbtn" id="restartMcp">Restart MCP</button><button class="clearbtn" id="clearTerminal">Clear</button></div></div>
+        <div id="terminal" class="terminal"></div>
+      </section>
+      <section class="page" id="page-settings">
+        <div class="page-head"><div><div class="page-title">Settings</div><div class="page-sub">Changes autosave immediately and stay synced with the extension.</div></div></div>
+        <div class="settingsgrid">
+          <div class="settingcard"><h3>Execution</h3><p>Choose the active engine and AgentScript permissions.</p>
+            <div class="settingrow"><label>Engine</label><select data-pref="rs-engine"><option value="roblox">Roblox Studio</option><option value="local">AgentScript</option></select></div>
+            <div class="settingrow"><label>Permissions</label><select data-pref="rsPermMode"><option value="sandbox">Sandbox</option><option value="ask">Ask</option><option value="full">Full</option></select></div>
+          </div>
+          <div class="settingcard"><h3>Reasoning</h3><p>Matches the extension work and thinking controls.</p>
+            <div class="settingrow"><label>Work mode</label><select data-pref="rsWorkMode"><option value="fast">Fast</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></div>
+            <div class="settingrow"><label>Reasoning</label><select data-pref="rsThinkingLevel"><option value="default">Default</option><option value="low">Low</option><option value="mid">Medium</option><option value="high">High</option><option value="max">Max</option></select></div>
+            <div class="settingrow"><label>Extra Thinking</label><div class="toggle" data-pref="rsExtraThinking"></div></div>
+            <div class="settingrow"><label>Plan Mode</label><div class="toggle" data-pref="rsPlanMode"></div></div>
+          </div>
+          <div class="settingcard"><h3>Automation</h3><p>Existing PlazCode helpers remain unchanged underneath the new UI.</p>
+            <div class="settingrow"><label>Forge UI</label><div class="toggle" data-pref="rsForgeMode"></div></div>
+            <div class="settingrow"><label>Auto Fix</label><div class="toggle" data-pref="rsAutoFix"></div></div>
+            <div class="settingrow"><label>Background Mode</label><div class="toggle" data-pref="rsBgMode"></div></div>
+            <div class="settingrow"><label>Sounds</label><div class="toggle" data-pref="rsSounds"></div></div>
+          </div>
+          <div class="settingcard"><h3>Desktop</h3><p>Closing hides PlazCode in the background. Launching the same version reopens it.</p>
+            <div class="settingrow"><label>Autosave</label><span style="margin-left:auto;color:var(--green);font-size:11px;font-weight:700">Active</span></div>
+            <div class="settingrow"><label>Version</label><span style="margin-left:auto;color:#c4d1e2;font-size:11px">__PLAZCODE_VERSION__</span></div>
+            <div style="display:flex;gap:8px;margin-top:14px"><button class="accentbtn" data-ipc="hide">Hide to background</button><button class="dangerbtn" data-ipc="quit">Exit PlazCode</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+const KEY="__PLAZCODE_PAIRING_KEY__";
+const API="http://127.0.0.1:3000";
+let state=null,toolFilter="All",toolQuery="";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+async function api(path,opts={}){const h=new Headers(opts.headers||{});h.set("Authorization","Bearer "+KEY);if(opts.body&&!h.has("Content-Type"))h.set("Content-Type","application/json");const r=await fetch(API+path,{...opts,headers:h});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("HTTP "+r.status));return j}
+function ipc(msg){try{window.ipc.postMessage(msg)}catch{}}
+function go(name){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id==="page-"+name));document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.page===name));}
+document.querySelectorAll("[data-page]").forEach(x=>x.onclick=()=>go(x.dataset.page));document.querySelectorAll("[data-go]").forEach(x=>x.onclick=()=>go(x.dataset.go));document.querySelectorAll("[data-ipc]").forEach(x=>x.onclick=()=>ipc(x.dataset.ipc));
+document.getElementById("dragbar").addEventListener("mousedown",e=>{if(e.button===0&&!e.target.closest("button"))ipc("drag")});
+function sourceMeta(src){if(src==="Roblox Studio")return["RS","rs"];if(src==="AgentScript")return["AS","as"];if(src.startsWith("MCP / "))return["MCP","mcp"];return["PC","pc"]}
+function renderTools(){
+ const tools=state?.tools||[];const counts={All:tools.length,RS:0,AS:0,PC:0,MCP:0};tools.forEach(t=>counts[sourceMeta(t.source)[0]]++);
+ document.getElementById("toolFilters").innerHTML=Object.keys(counts).map(k=>'<button class="filter '+(toolFilter===k?'active':'')+'" data-filter="'+k+'">'+k+" "+counts[k]+"</button>").join("");
+ document.querySelectorAll("[data-filter]").forEach(x=>x.onclick=()=>{toolFilter=x.dataset.filter;renderTools()});
+ const q=toolQuery.toLowerCase();const filtered=tools.filter(t=>{const m=sourceMeta(t.source)[0];return(toolFilter==="All"||m===toolFilter)&&(!q||t.name.toLowerCase().includes(q)||t.source.toLowerCase().includes(q))});
+ document.getElementById("toolsGrid").innerHTML=filtered.length?filtered.map(t=>{const [tag,cls]=sourceMeta(t.source);return '<div class="toolcard"><div class="tooltop"><span class="tag '+cls+'">'+tag+'</span><div class="toolname">'+esc(t.name)+'</div><span class="available"></span></div><div class="toolsource">'+esc(t.source)+'</div></div>'}).join(""):'<div class="empty">No matching tools.</div>';
+}
+document.getElementById("toolSearch").addEventListener("input",e=>{toolQuery=e.target.value;renderTools()});
+async function loadCatalog(){
+ try{const cat=await api("/api/mcp/catalog");const live=new Map((state?.servers||[]).map(s=>[s.id,s]));let html='<div class="mcpcard" style="border-color:rgba(49,224,164,.45)"><div class="mcptop"><div class="mcpname">Roblox Studio MCP</div><span class="mcpstate '+(state?.mcp_alive?'on':'')+'">'+(state?.mcp_alive?'Active':'Waiting')+'</span></div><div class="mcpdesc">Primary PlazCode server. Protected and always available when Roblox Studio MCP is connected.</div><div class="mcpcommand">built-in primary server</div></div>';
+ html+=(cat.servers||[]).map(s=>{const l=live.get(s.id);const on=!!s.enabled;const alive=!!l?.alive;return '<div class="mcpcard"><div class="mcptop"><div class="mcpname">'+esc(s.name)+'</div><span class="mcpstate '+(alive?'on':'')+'">'+(alive?'Active':on?'Configured':'Available')+'</span></div><div class="mcpdesc">'+esc(s.description)+'</div><div class="mcpcommand">'+esc(s.command+" "+(s.args||[]).join(" "))+'</div>'+(l?.error?'<div class="mcpdesc" style="color:var(--red)">'+esc(l.error)+'</div>':alive?'<div class="mcpdesc" style="color:var(--green)">'+l.tools+' tools available</div>':'')+'<div class="mcpactions"><button class="'+(on?'dangerbtn':'accentbtn')+'" data-mcp="'+esc(s.id)+'" data-enabled="'+(!on)+'">'+(on?'Disable':'Enable')+'</button></div></div>'}).join("");
+ document.getElementById("mcpGrid").innerHTML=html;document.querySelectorAll("[data-mcp]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/api/mcp/toggle",{method:"POST",body:JSON.stringify({id:b.dataset.mcp,enabled:b.dataset.enabled==="true"})});await refresh()}catch(e){alert(e.message)}finally{b.disabled=false}})
+ }catch(e){document.getElementById("mcpGrid").innerHTML='<div class="empty">'+esc(e.message)+'</div>'}
+}
+function renderLogs(){
+ const logs=state?.logs||[];const last=logs.slice(-9);document.getElementById("recent").innerHTML=last.length?last.map(line=>{const err=/ERROR/i.test(line),warn=/WARN/i.test(line);return '<div class="activity-row"><span class="dot '+(!err&&!warn?'on':'')+'" style="'+(err?'background:var(--red)':warn?'background:var(--amber)':'')+'"></span><div class="activity-text">'+esc(line)+'</div><span class="activity-time"></span></div>'}).join(""):'<div class="empty">No recent activity.</div>';
+ document.getElementById("terminal").innerHTML=logs.map(line=>'<div class="logline '+(/ERROR/i.test(line)?'error':/WARN/i.test(line)?'warn':'')+'">'+esc(line)+'</div>').join("")||'<div class="empty">No logs yet.</div>';const t=document.getElementById("terminal");t.scrollTop=t.scrollHeight;
+}
+function renderSettings(){const p=state?.preferences||{};document.querySelectorAll("select[data-pref]").forEach(el=>{if(p[el.dataset.pref]!==undefined)el.value=p[el.dataset.pref]});document.querySelectorAll(".toggle[data-pref]").forEach(el=>el.classList.toggle("on",!!p[el.dataset.pref]))}
+document.querySelectorAll("select[data-pref]").forEach(el=>el.addEventListener("change",async()=>{await patchPref(el.dataset.pref,el.value)}));document.querySelectorAll(".toggle[data-pref]").forEach(el=>el.onclick=async()=>{await patchPref(el.dataset.pref,!el.classList.contains("on"))});
+async function patchPref(k,v){try{await api("/api/desktop/preferences",{method:"POST",body:JSON.stringify({[k]:v})});await refresh()}catch(e){alert(e.message)}}
+async function clearLogs(){await api("/api/desktop/clear-logs",{method:"POST"});await refresh()}document.getElementById("clearHome").onclick=clearLogs;document.getElementById("clearTerminal").onclick=clearLogs;
+document.getElementById("restartMcp").onclick=async()=>{const b=document.getElementById("restartMcp");b.disabled=true;b.textContent="Restarting...";try{await api("/api/desktop/restart",{method:"POST"});await refresh()}catch(e){alert(e.message)}finally{b.disabled=false;b.textContent="Restart MCP"}};
+function render(){
+ if(!state)return;const bridge=!!state.bridge_connected,studio=!!state.studio_running&&!!state.mcp_alive,ws=!!state.workspace_ready;
+ document.getElementById("sideDot").classList.toggle("on",bridge);document.getElementById("sideStatus").textContent=bridge?"Bridge connected":"Bridge waiting";document.getElementById("heroBrowser").textContent=bridge?"connected":"waiting";
+ document.getElementById("bridgeDot").classList.toggle("on",bridge);document.getElementById("bridgeVal").textContent=bridge?"Connected":"Waiting";
+ document.getElementById("studioDot").classList.toggle("on",studio);document.getElementById("studioVal").textContent=studio?"Connected":state.studio_running?"Open":"Offline";
+ document.getElementById("toolCount").textContent=(state.tools||[]).length;document.getElementById("workspaceVal").textContent=ws?"Ready":"Off";document.getElementById("workspaceSub").textContent=ws?(state.workspace_root||"AgentScript files"):"AgentScript files";
+ const fatal=document.getElementById("fatal");fatal.style.display=state.fatal?"block":"none";fatal.textContent=state.fatal||"";
+ renderLogs();renderTools();renderSettings();loadCatalog();
+}
+async function refresh(){try{state=await api("/api/desktop/state");render()}catch(e){const f=document.getElementById("fatal");f.style.display="block";f.textContent=e.message}}
+refresh();setInterval(refresh,1000);
+</script>
+</body>
+</html>
