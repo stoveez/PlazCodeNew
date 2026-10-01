@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use axum::{extract::{Query, State}, http::Method, response::IntoResponse, routing::{get, post}, Json, Router};
+use axum::{extract::{Query, State}, http::Method, response::{Html, IntoResponse}, routing::{get, post}, Json, Router};
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -693,6 +693,10 @@ async fn run_server(state: AppState, addr: SocketAddr, start: std::time::Instant
         .route("/api/result", post(result_handler))
         .route("/api/disconnect", post(disconnect_handler))
         .route("/api/status", get(status_handler))
+        .route("/desktop", get(desktop_handler))
+        .route("/api/desktop/state", get(desktop_state_handler))
+        .route("/api/desktop/restart", post(desktop_restart_handler))
+        .route("/api/desktop/clear-logs", post(desktop_clear_logs_handler))
         .route("/api/show", post(show_handler))
         .route("/api/shutdown", post(shutdown_handler))
         .route("/api/local-full", post(local_full_handler))
@@ -763,6 +767,58 @@ async fn local_full_handler(State(state): State<AppState>, Json(req): Json<Local
     state.workspace.set_full_access(req.enabled);
     info!("local_full set to {} via HTTP", req.enabled);
     Json(serde_json::json!({"ok": true, "local_full": req.enabled}))
+}
+
+async fn desktop_handler(State(state): State<AppState>) -> Html<String> {
+    let html = include_str!("desktop.html")
+        .replace("__PLAZCODE_PAIRING_KEY__", state.pairing_key.as_str())
+        .replace("__PLAZCODE_VERSION__", env!("CARGO_PKG_VERSION"));
+    Html(html)
+}
+
+async fn desktop_state_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let tools = state.ui.tools.lock().map(|value| value.clone()).unwrap_or_default();
+    let servers = state.ui.servers.lock().map(|value| value.clone()).unwrap_or_default();
+    let logs = state.ui.logs.lock()
+        .map(|value| value.iter().cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+    let fatal = state.ui.fatal.lock().ok().and_then(|value| value.clone());
+    Json(serde_json::json!({
+        "ok": true,
+        "version": env!("CARGO_PKG_VERSION"),
+        "bridge_connected": state.ui.extension_recent(),
+        "studio_running": state.ui.studio_running.load(Ordering::Relaxed),
+        "mcp_alive": state.ui.mcp_alive.load(Ordering::Relaxed),
+        "workspace_ready": state.ui.workspace_ready.load(Ordering::Relaxed),
+        "workspace_root": state.ui.workspace_root.lock().map(|value| value.clone()).unwrap_or_default(),
+        "roblox_connected": state.roblox_editor_connected.load(Ordering::Relaxed),
+        "roblox_bridge_connected": state.roblox_clients.read().await.len() > 0,
+        "local_bridge_connected": state.local_clients.read().await.len() > 0,
+        "tools": tools,
+        "servers": servers,
+        "logs": logs,
+        "fatal": fatal,
+        "preferences": state.preferences.snapshot(),
+    }))
+}
+
+async fn desktop_restart_handler(State(state): State<AppState>) -> impl IntoResponse {
+    {
+        let mut mcp = state.roblox_mcp.lock().await;
+        mcp.reset().await;
+    }
+    match roblox_tools(&state).await {
+        Ok(tools) => Json(serde_json::json!({"ok": true, "tools": tools.len()})).into_response(),
+        Err(error) => (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"ok": false, "error": error.to_string()})),
+        ).into_response(),
+    }
+}
+
+async fn desktop_clear_logs_handler(State(state): State<AppState>) -> impl IntoResponse {
+    state.ui.clear_logs();
+    Json(serde_json::json!({"ok": true}))
 }
 
 async fn show_handler(State(state): State<AppState>) -> impl IntoResponse {
