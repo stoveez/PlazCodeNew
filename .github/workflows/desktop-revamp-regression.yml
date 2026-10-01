@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: desktop-revamp-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   extension:
     runs-on: ubuntu-latest
