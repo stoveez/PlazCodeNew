@@ -24,7 +24,7 @@ radial-gradient(circle at 14% 92%,rgba(255,111,27,.055),transparent 26%),var(--b
 .navicon{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.navbtn.active .navicon{color:var(--orange2);filter:drop-shadow(0 0 7px rgba(255,169,63,.45))}
 .side-status{margin-top:auto;border:1px solid #263852;background:linear-gradient(145deg,#0b1727,#08111e);border-radius:14px;padding:13px 14px;box-shadow:0 0 22px rgba(0,0,0,.25)}.status-row{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700}.dot{width:9px;height:9px;border-radius:50%;background:#677995;box-shadow:0 0 0 4px rgba(103,121,149,.08)}.dot.on{background:var(--green);box-shadow:0 0 12px rgba(49,224,164,.6)}.side-sub{font-size:10px;color:var(--muted);margin:6px 0 0 18px}
 .shell{min-width:0;display:flex;flex-direction:column;height:100%}.titlebar{height:54px;display:flex;align-items:center;padding:0 15px 0 26px;border-bottom:1px solid #17263b;background:rgba(4,11,20,.78);backdrop-filter:blur(18px);-webkit-app-region:drag;user-select:none}
-.title-spacer{flex:1}.title-version{font-size:11px;color:var(--muted);margin-right:16px}.winbtn{width:40px;height:32px;border:0;background:transparent;color:#b5c2d4;border-radius:8px;cursor:pointer;-webkit-app-region:no-drag}.winbtn:hover{background:#122137;color:#fff}.winbtn.close:hover{background:#a9353a;color:#fff}
+.title-spacer{flex:1}.title-version{font-size:11px;color:var(--muted);margin-right:16px}.winbtn{width:40px;height:32px;border:0;background:transparent;color:#b5c2d4;border-radius:8px;cursor:pointer;-webkit-app-region:no-drag;position:relative}.winbtn:hover{background:#122137;color:#fff}.winbtn.close:hover{background:#a9353a;color:#fff}.winicon{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}.winicon.min{width:10px;height:1.5px;background:currentColor;border-radius:2px}.winicon.max{width:10px;height:10px;border:1.4px solid currentColor;border-radius:1px}.winicon.close{width:11px;height:11px}.winicon.close:before,.winicon.close:after{content:"";position:absolute;left:5px;top:-1px;width:1.5px;height:13px;background:currentColor;border-radius:2px}.winicon.close:before{transform:rotate(45deg)}.winicon.close:after{transform:rotate(-45deg)}
 .content{flex:1;overflow:auto;padding:22px 26px 28px;scrollbar-color:#263a56 transparent}.page{display:none;max-width:1520px;margin:0 auto}.page.active{display:block}
 .hero{position:relative;min-height:196px;border:1px solid rgba(255,149,40,.7);border-radius:20px;background:
 linear-gradient(110deg,rgba(255,146,38,.07),transparent 35%),
@@ -72,7 +72,7 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
   <main class="shell">
     <div class="titlebar" id="dragbar">
       <div class="title-spacer"></div><div class="title-version">PlazCode __PLAZCODE_VERSION__</div>
-      <button class="winbtn" data-ipc="minimize">—</button><button class="winbtn" data-ipc="maximize">□</button><button class="winbtn close" data-ipc="hide">×</button>
+      <button class="winbtn" data-ipc="minimize" aria-label="Minimize"><span class="winicon min"></span></button><button class="winbtn" data-ipc="maximize" aria-label="Maximize"><span class="winicon max"></span></button><button class="winbtn close" data-ipc="hide" aria-label="Close"><span class="winicon close"></span></button>
     </div>
     <div class="content">
       <div id="fatal" class="fatal"></div>
@@ -143,50 +143,368 @@ padding:34px 36px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,184,74,.12) inse
   </main>
 </div>
 <script>
-const KEY="__PLAZCODE_PAIRING_KEY__";
-const API="http://127.0.0.1:3000";
-let state=null,toolFilter="All",toolQuery="";
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
-async function api(path,opts={}){const h=new Headers(opts.headers||{});h.set("Authorization","Bearer "+KEY);if(opts.body&&!h.has("Content-Type"))h.set("Content-Type","application/json");const r=await fetch(API+path,{...opts,headers:h});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("HTTP "+r.status));return j}
-function ipc(msg){try{window.ipc.postMessage(msg)}catch{}}
-function go(name){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id==="page-"+name));document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.page===name));}
-document.querySelectorAll("[data-page]").forEach(x=>x.onclick=()=>go(x.dataset.page));document.querySelectorAll("[data-go]").forEach(x=>x.onclick=()=>go(x.dataset.go));document.querySelectorAll("[data-ipc]").forEach(x=>x.onclick=()=>ipc(x.dataset.ipc));
-document.getElementById("dragbar").addEventListener("mousedown",e=>{if(e.button===0&&!e.target.closest("button"))ipc("drag")});
-function sourceMeta(src){if(src==="Roblox Studio")return["RS","rs"];if(src==="AgentScript")return["AS","as"];if(src.startsWith("MCP / "))return["MCP","mcp"];return["PC","pc"]}
-function renderTools(){
- const tools=state?.tools||[];const counts={All:tools.length,RS:0,AS:0,PC:0,MCP:0};tools.forEach(t=>counts[sourceMeta(t.source)[0]]++);
- document.getElementById("toolFilters").innerHTML=Object.keys(counts).map(k=>'<button class="filter '+(toolFilter===k?'active':'')+'" data-filter="'+k+'">'+k+" "+counts[k]+"</button>").join("");
- document.querySelectorAll("[data-filter]").forEach(x=>x.onclick=()=>{toolFilter=x.dataset.filter;renderTools()});
- const q=toolQuery.toLowerCase();const filtered=tools.filter(t=>{const m=sourceMeta(t.source)[0];return(toolFilter==="All"||m===toolFilter)&&(!q||t.name.toLowerCase().includes(q)||t.source.toLowerCase().includes(q))});
- document.getElementById("toolsGrid").innerHTML=filtered.length?filtered.map(t=>{const [tag,cls]=sourceMeta(t.source);return '<div class="toolcard"><div class="tooltop"><span class="tag '+cls+'">'+tag+'</span><div class="toolname">'+esc(t.name)+'</div><span class="available"></span></div><div class="toolsource">'+esc(t.source)+'</div></div>'}).join(""):'<div class="empty">No matching tools.</div>';
-}
-document.getElementById("toolSearch").addEventListener("input",e=>{toolQuery=e.target.value;renderTools()});
-async function loadCatalog(){
- try{const cat=await api("/api/mcp/catalog");const live=new Map((state?.servers||[]).map(s=>[s.id,s]));let html='<div class="mcpcard" style="border-color:rgba(49,224,164,.45)"><div class="mcptop"><div class="mcpname">Roblox Studio MCP</div><span class="mcpstate '+(state?.mcp_alive?'on':'')+'">'+(state?.mcp_alive?'Active':'Waiting')+'</span></div><div class="mcpdesc">Primary PlazCode server. Protected and always available when Roblox Studio MCP is connected.</div><div class="mcpcommand">built-in primary server</div></div>';
- html+=(cat.servers||[]).map(s=>{const l=live.get(s.id);const on=!!s.enabled;const alive=!!l?.alive;return '<div class="mcpcard"><div class="mcptop"><div class="mcpname">'+esc(s.name)+'</div><span class="mcpstate '+(alive?'on':'')+'">'+(alive?'Active':on?'Configured':'Available')+'</span></div><div class="mcpdesc">'+esc(s.description)+'</div><div class="mcpcommand">'+esc(s.command+" "+(s.args||[]).join(" "))+'</div>'+(l?.error?'<div class="mcpdesc" style="color:var(--red)">'+esc(l.error)+'</div>':alive?'<div class="mcpdesc" style="color:var(--green)">'+l.tools+' tools available</div>':'')+'<div class="mcpactions"><button class="'+(on?'dangerbtn':'accentbtn')+'" data-mcp="'+esc(s.id)+'" data-enabled="'+(!on)+'">'+(on?'Disable':'Enable')+'</button></div></div>'}).join("");
- document.getElementById("mcpGrid").innerHTML=html;document.querySelectorAll("[data-mcp]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api("/api/mcp/toggle",{method:"POST",body:JSON.stringify({id:b.dataset.mcp,enabled:b.dataset.enabled==="true"})});await refresh()}catch(e){alert(e.message)}finally{b.disabled=false}})
- }catch(e){document.getElementById("mcpGrid").innerHTML='<div class="empty">'+esc(e.message)+'</div>'}
-}
-function renderLogs(){
- const logs=state?.logs||[];const last=logs.slice(-9);document.getElementById("recent").innerHTML=last.length?last.map(line=>{const err=/ERROR/i.test(line),warn=/WARN/i.test(line);return '<div class="activity-row"><span class="dot '+(!err&&!warn?'on':'')+'" style="'+(err?'background:var(--red)':warn?'background:var(--amber)':'')+'"></span><div class="activity-text">'+esc(line)+'</div><span class="activity-time"></span></div>'}).join(""):'<div class="empty">No recent activity.</div>';
- document.getElementById("terminal").innerHTML=logs.map(line=>'<div class="logline '+(/ERROR/i.test(line)?'error':/WARN/i.test(line)?'warn':'')+'">'+esc(line)+'</div>').join("")||'<div class="empty">No logs yet.</div>';const t=document.getElementById("terminal");t.scrollTop=t.scrollHeight;
-}
-function renderSettings(){const p=state?.preferences||{};document.querySelectorAll("select[data-pref]").forEach(el=>{if(p[el.dataset.pref]!==undefined)el.value=p[el.dataset.pref]});document.querySelectorAll(".toggle[data-pref]").forEach(el=>el.classList.toggle("on",!!p[el.dataset.pref]))}
-document.querySelectorAll("select[data-pref]").forEach(el=>el.addEventListener("change",async()=>{await patchPref(el.dataset.pref,el.value)}));document.querySelectorAll(".toggle[data-pref]").forEach(el=>el.onclick=async()=>{await patchPref(el.dataset.pref,!el.classList.contains("on"))});
-async function patchPref(k,v){try{await api("/api/desktop/preferences",{method:"POST",body:JSON.stringify({[k]:v})});await refresh()}catch(e){alert(e.message)}}
-async function clearLogs(){await api("/api/desktop/clear-logs",{method:"POST"});await refresh()}document.getElementById("clearHome").onclick=clearLogs;document.getElementById("clearTerminal").onclick=clearLogs;
-document.getElementById("restartMcp").onclick=async()=>{const b=document.getElementById("restartMcp");b.disabled=true;b.textContent="Restarting...";try{await api("/api/desktop/restart",{method:"POST"});await refresh()}catch(e){alert(e.message)}finally{b.disabled=false;b.textContent="Restart MCP"}};
-function render(){
- if(!state)return;const bridge=!!state.bridge_connected,studio=!!state.studio_running&&!!state.mcp_alive,ws=!!state.workspace_ready;
- document.getElementById("sideDot").classList.toggle("on",bridge);document.getElementById("sideStatus").textContent=bridge?"Bridge connected":"Bridge waiting";document.getElementById("heroBrowser").textContent=bridge?"connected":"waiting";
- document.getElementById("bridgeDot").classList.toggle("on",bridge);document.getElementById("bridgeVal").textContent=bridge?"Connected":"Waiting";
- document.getElementById("studioDot").classList.toggle("on",studio);document.getElementById("studioVal").textContent=studio?"Connected":state.studio_running?"Open":"Offline";
- document.getElementById("toolCount").textContent=(state.tools||[]).length;document.getElementById("workspaceVal").textContent=ws?"Ready":"Off";document.getElementById("workspaceSub").textContent=ws?(state.workspace_root||"AgentScript files"):"AgentScript files";
- const fatal=document.getElementById("fatal");fatal.style.display=state.fatal?"block":"none";fatal.textContent=state.fatal||"";
- renderLogs();renderTools();renderSettings();loadCatalog();
-}
-async function refresh(){try{state=await api("/api/desktop/state");render()}catch(e){const f=document.getElementById("fatal");f.style.display="block";f.textContent=e.message}}
-refresh();setInterval(refresh,1000);
+(function () {
+  "use strict";
+
+  var Key = "__PLAZCODE_PAIRING_KEY__";
+  var Apiurl = "http://127.0.0.1:3000";
+  var State = null;
+  var Toolfilter = "All";
+  var Toolquery = "";
+  var Refreshing = false;
+
+  function Byid(Id) {
+    return document.getElementById(Id);
+  }
+
+  function Toarray(Value) {
+    return Array.prototype.slice.call(Value || []);
+  }
+
+  function Escape(Value) {
+    var Text = String(Value == null ? "" : Value);
+    return Text.replace(/[&<>"']/g, function (Char) {
+      var Map = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      };
+      return Map[Char];
+    });
+  }
+
+  function Ipc(Message) {
+    try {
+      if (window.ipc && typeof window.ipc.postMessage === "function") {
+        window.ipc.postMessage(String(Message));
+      }
+    } catch (Error) {
+      console.error("PlazCode IPC error", Error);
+    }
+  }
+
+  function Showerror(Error) {
+    var Message = Error && Error.message ? Error.message : String(Error);
+    console.error("PlazCode desktop UI error", Error);
+    var Fatal = Byid("fatal");
+    if (Fatal) {
+      Fatal.style.display = "block";
+      Fatal.textContent = "Desktop UI error: " + Message;
+    }
+    Ipc("js-error:" + Message);
+  }
+
+  function Api(Path, Options) {
+    Options = Options || {};
+    var Headersobj = new Headers(Options.headers || {});
+    Headersobj.set("Authorization", "Bearer " + Key);
+    if (Options.body && !Headersobj.has("Content-Type")) {
+      Headersobj.set("Content-Type", "application/json");
+    }
+
+    var Requestoptions = {};
+    Object.keys(Options).forEach(function (Name) {
+      Requestoptions[Name] = Options[Name];
+    });
+    Requestoptions.headers = Headersobj;
+
+    return fetch(Apiurl + Path, Requestoptions).then(function (Response) {
+      return Response.json().catch(function () {
+        return {};
+      }).then(function (Body) {
+        if (!Response.ok) {
+          throw new Error(Body.error || ("HTTP " + Response.status));
+        }
+        return Body;
+      });
+    });
+  }
+
+  function Go(Name) {
+    Toarray(document.querySelectorAll(".page")).forEach(function (Node) {
+      Node.classList.toggle("active", Node.id === "page-" + Name);
+    });
+    Toarray(document.querySelectorAll(".navbtn")).forEach(function (Node) {
+      Node.classList.toggle("active", Node.getAttribute("data-page") === Name);
+    });
+  }
+
+  function Sourcemeta(Source) {
+    Source = String(Source || "");
+    if (Source === "Roblox Studio") return ["RS", "rs"];
+    if (Source === "AgentScript") return ["AS", "as"];
+    if (Source.indexOf("MCP / ") === 0) return ["MCP", "mcp"];
+    return ["PC", "pc"];
+  }
+
+  function Rendertools() {
+    var Tools = State && State.tools ? State.tools : [];
+    var Counts = { All: Tools.length, RS: 0, AS: 0, PC: 0, MCP: 0 };
+
+    Tools.forEach(function (Tool) {
+      var Meta = Sourcemeta(Tool.source);
+      Counts[Meta[0]] += 1;
+    });
+
+    var Filterbox = Byid("toolFilters");
+    Filterbox.innerHTML = Object.keys(Counts).map(function (Name) {
+      return '<button class="filter ' + (Toolfilter === Name ? "active" : "") + '" data-filter="' + Name + '">' + Name + " " + Counts[Name] + "</button>";
+    }).join("");
+
+    Toarray(document.querySelectorAll("[data-filter]")).forEach(function (Button) {
+      Button.onclick = function () {
+        Toolfilter = Button.getAttribute("data-filter");
+        Rendertools();
+      };
+    });
+
+    var Query = Toolquery.toLowerCase();
+    var Filtered = Tools.filter(function (Tool) {
+      var Name = String(Tool.name || "");
+      var Source = String(Tool.source || "");
+      var Tag = Sourcemeta(Source)[0];
+      var Searchmatch = !Query || Name.toLowerCase().indexOf(Query) >= 0 || Source.toLowerCase().indexOf(Query) >= 0;
+      return (Toolfilter === "All" || Tag === Toolfilter) && Searchmatch;
+    });
+
+    Byid("toolsGrid").innerHTML = Filtered.length ? Filtered.map(function (Tool) {
+      var Meta = Sourcemeta(Tool.source);
+      return '<div class="toolcard"><div class="tooltop"><span class="tag ' + Meta[1] + '">' + Meta[0] + '</span><div class="toolname">' + Escape(Tool.name) + '</div><span class="available"></span></div><div class="toolsource">' + Escape(Tool.source) + '</div></div>';
+    }).join("") : '<div class="empty">No matching tools.</div>';
+  }
+
+  function Loadcatalog() {
+    return Api("/api/mcp/catalog").then(function (Catalog) {
+      var Live = {};
+      var Servers = State && State.servers ? State.servers : [];
+      Servers.forEach(function (Server) {
+        Live[Server.id] = Server;
+      });
+
+      var Html = '<div class="mcpcard" style="border-color:rgba(49,224,164,.45)"><div class="mcptop"><div class="mcpname">Roblox Studio MCP</div><span class="mcpstate ' + (State && State.mcp_alive ? "on" : "") + '">' + (State && State.mcp_alive ? "Active" : "Waiting") + '</span></div><div class="mcpdesc">Primary PlazCode server. Protected and always available when Roblox Studio MCP is connected.</div><div class="mcpcommand">built-in primary server</div></div>';
+
+      var Catalogservers = Catalog && Catalog.servers ? Catalog.servers : [];
+      Html += Catalogservers.map(function (Server) {
+        var Current = Live[Server.id] || null;
+        var Enabled = !!Server.enabled;
+        var Alive = !!(Current && Current.alive);
+        var Args = Server.args || [];
+        var Extra = "";
+
+        if (Current && Current.error) {
+          Extra = '<div class="mcpdesc" style="color:var(--red)">' + Escape(Current.error) + '</div>';
+        } else if (Alive) {
+          Extra = '<div class="mcpdesc" style="color:var(--green)">' + Escape(Current.tools) + ' tools available</div>';
+        }
+
+        return '<div class="mcpcard"><div class="mcptop"><div class="mcpname">' + Escape(Server.name) + '</div><span class="mcpstate ' + (Alive ? "on" : "") + '">' + (Alive ? "Active" : Enabled ? "Configured" : "Available") + '</span></div><div class="mcpdesc">' + Escape(Server.description) + '</div><div class="mcpcommand">' + Escape(Server.command + " " + Args.join(" ")) + '</div>' + Extra + '<div class="mcpactions"><button class="' + (Enabled ? "dangerbtn" : "accentbtn") + '" data-mcp="' + Escape(Server.id) + '" data-enabled="' + (!Enabled) + '">' + (Enabled ? "Disable" : "Enable") + '</button></div></div>';
+      }).join("");
+
+      Byid("mcpGrid").innerHTML = Html;
+
+      Toarray(document.querySelectorAll("[data-mcp]")).forEach(function (Button) {
+        Button.onclick = function () {
+          Button.disabled = true;
+          Api("/api/mcp/toggle", {
+            method: "POST",
+            body: JSON.stringify({
+              id: Button.getAttribute("data-mcp"),
+              enabled: Button.getAttribute("data-enabled") === "true"
+            })
+          }).then(Refresh).catch(Showerror).then(function () {
+            Button.disabled = false;
+          });
+        };
+      });
+    }).catch(function (Error) {
+      Byid("mcpGrid").innerHTML = '<div class="empty">' + Escape(Error.message || Error) + '</div>';
+    });
+  }
+
+  function Renderlogs() {
+    var Logs = State && State.logs ? State.logs : [];
+    var Last = Logs.slice(-9);
+
+    Byid("recent").innerHTML = Last.length ? Last.map(function (Line) {
+      var Errorline = /ERROR/i.test(Line);
+      var Warnline = /WARN/i.test(Line);
+      var Style = Errorline ? "background:var(--red)" : Warnline ? "background:var(--amber)" : "";
+      return '<div class="activity-row"><span class="dot ' + (!Errorline && !Warnline ? "on" : "") + '" style="' + Style + '"></span><div class="activity-text">' + Escape(Line) + '</div><span class="activity-time"></span></div>';
+    }).join("") : '<div class="empty">No recent activity.</div>';
+
+    Byid("terminal").innerHTML = Logs.length ? Logs.map(function (Line) {
+      var Classname = /ERROR/i.test(Line) ? "error" : /WARN/i.test(Line) ? "warn" : "";
+      return '<div class="logline ' + Classname + '">' + Escape(Line) + '</div>';
+    }).join("") : '<div class="empty">No logs yet.</div>';
+
+    var Terminal = Byid("terminal");
+    Terminal.scrollTop = Terminal.scrollHeight;
+  }
+
+  function Rendersettings() {
+    var Preferences = State && State.preferences ? State.preferences : {};
+
+    Toarray(document.querySelectorAll("select[data-pref]")).forEach(function (Element) {
+      var Name = Element.getAttribute("data-pref");
+      if (Preferences[Name] !== undefined) {
+        Element.value = Preferences[Name];
+      }
+    });
+
+    Toarray(document.querySelectorAll(".toggle[data-pref]")).forEach(function (Element) {
+      var Name = Element.getAttribute("data-pref");
+      Element.classList.toggle("on", !!Preferences[Name]);
+    });
+  }
+
+  function Patchpref(Name, Value) {
+    return Api("/api/desktop/preferences", {
+      method: "POST",
+      body: JSON.stringify((function () {
+        var Body = {};
+        Body[Name] = Value;
+        return Body;
+      })())
+    }).then(Refresh).catch(Showerror);
+  }
+
+  function Clearlogs() {
+    return Api("/api/desktop/clear-logs", { method: "POST" }).then(Refresh).catch(Showerror);
+  }
+
+  function Render() {
+    if (!State) return;
+
+    var Bridge = !!State.bridge_connected;
+    var Studio = !!State.studio_running && !!State.mcp_alive;
+    var Workspace = !!State.workspace_ready;
+    var Tools = State.tools || [];
+
+    Byid("sideDot").classList.toggle("on", Bridge);
+    Byid("sideStatus").textContent = Bridge ? "Bridge connected" : "Bridge waiting";
+    Byid("heroBrowser").textContent = Bridge ? "connected" : "waiting";
+    Byid("bridgeDot").classList.toggle("on", Bridge);
+    Byid("bridgeVal").textContent = Bridge ? "Connected" : "Waiting";
+    Byid("studioDot").classList.toggle("on", Studio);
+    Byid("studioVal").textContent = Studio ? "Connected" : State.studio_running ? "Open" : "Offline";
+    Byid("toolCount").textContent = String(Tools.length);
+    Byid("workspaceVal").textContent = Workspace ? "Ready" : "Off";
+    Byid("workspaceSub").textContent = Workspace ? (State.workspace_root || "AgentScript files") : "AgentScript files";
+
+    var Fatal = Byid("fatal");
+    Fatal.style.display = State.fatal ? "block" : "none";
+    Fatal.textContent = State.fatal || "";
+
+    Renderlogs();
+    Rendertools();
+    Rendersettings();
+  }
+
+  function Refresh() {
+    if (Refreshing) return Promise.resolve();
+    Refreshing = true;
+
+    return Api("/api/desktop/state").then(function (Nextstate) {
+      State = Nextstate;
+      Render();
+      return Loadcatalog();
+    }).catch(Showerror).then(function () {
+      Refreshing = false;
+    });
+  }
+
+  function Bind() {
+    Toarray(document.querySelectorAll("[data-page]")).forEach(function (Button) {
+      Button.onclick = function () {
+        Go(Button.getAttribute("data-page"));
+      };
+    });
+
+    Toarray(document.querySelectorAll("[data-go]")).forEach(function (Button) {
+      Button.onclick = function () {
+        Go(Button.getAttribute("data-go"));
+      };
+    });
+
+    Toarray(document.querySelectorAll("[data-ipc]")).forEach(function (Button) {
+      Button.onclick = function () {
+        Ipc(Button.getAttribute("data-ipc"));
+      };
+    });
+
+    var Dragbar = Byid("dragbar");
+    Dragbar.addEventListener("mousedown", function (Event) {
+      if (Event.button === 0 && !(Event.target && Event.target.closest && Event.target.closest("button"))) {
+        Ipc("drag");
+      }
+    });
+
+    Byid("toolSearch").addEventListener("input", function (Event) {
+      Toolquery = Event.target.value || "";
+      Rendertools();
+    });
+
+    Byid("clearHome").onclick = Clearlogs;
+    Byid("clearTerminal").onclick = Clearlogs;
+
+    Byid("restartMcp").onclick = function () {
+      var Button = Byid("restartMcp");
+      Button.disabled = true;
+      Button.textContent = "Restarting...";
+
+      Api("/api/desktop/restart", { method: "POST" })
+        .then(Refresh)
+        .catch(Showerror)
+        .then(function () {
+          Button.disabled = false;
+          Button.textContent = "Restart MCP";
+        });
+    };
+
+    Toarray(document.querySelectorAll("select[data-pref]")).forEach(function (Element) {
+      Element.addEventListener("change", function () {
+        Patchpref(Element.getAttribute("data-pref"), Element.value);
+      });
+    });
+
+    Toarray(document.querySelectorAll(".toggle[data-pref]")).forEach(function (Element) {
+      Element.onclick = function () {
+        Patchpref(Element.getAttribute("data-pref"), !Element.classList.contains("on"));
+      };
+    });
+  }
+
+  function Bootstrap() {
+    try {
+      Bind();
+      window.PlazCodeDesktop = {
+        go: Go,
+        refresh: Refresh
+      };
+      Ipc("ui-ready");
+      Refresh();
+      window.setInterval(Refresh, 1000);
+    } catch (Error) {
+      Showerror(Error);
+    }
+  }
+
+  window.addEventListener("error", function (Event) {
+    Showerror(Event.error || Event.message || "Unknown JavaScript error");
+  });
+
+  window.addEventListener("unhandledrejection", function (Event) {
+    Showerror(Event.reason || "Unhandled promise rejection");
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", Bootstrap);
+  } else {
+    Bootstrap();
+  }
+}());
 </script>
 </body>
 </html>
